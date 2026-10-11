@@ -1,1 +1,1259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AeroCraft AI - Rocket Lab</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
+  <style>
+    * { font-family: 'Architects Daughter', cursive, sans-serif !important; box-sizing: border-box; }
+    body {
+      background-color: #f0f9ff; color: #0f172a;
+      background-image: radial-gradient(#bae6fd 1.2px, transparent 1.2px);
+      background-size: 20px 20px; min-height: 100vh;
+    }
+    .sketch-card {
+      background: #ffffff; border: 3px solid #0284c7; box-shadow: 5px 5px 0px #7dd3fc;
+      border-radius: 14px; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .sketch-btn {
+      background: #7dd3fc; color: #0369a1; border: 3px solid #0284c7; box-shadow: 3px 3px 0px #0284c7;
+      font-weight: 800; border-radius: 10px; cursor: pointer; transition: all 0.15s ease;
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .sketch-btn:hover { background: #38bdf8; transform: translate(-2px, -2px); box-shadow: 5px 5px 0px #0284c7; }
+    .sketch-btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0px #0284c7; }
+    .sketch-btn-accent { background: #0284c7; color: #ffffff; border: 3px solid #0f172a; box-shadow: 3px 3px 0px #0f172a; }
+    .sketch-btn-accent:hover { background: #0369a1; box-shadow: 5px 5px 0px #0f172a; }
+    .sketch-btn-danger { background: #fecdd3; color: #9f1239; border: 3px solid #9f1239; box-shadow: 3px 3px 0px #9f1239; }
+    .sketch-btn-danger:hover { background: #fda4af; box-shadow: 5px 5px 0px #9f1239; }
+    input[type=range] { accent-color: #0284c7; cursor: pointer; }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #e0f2fe; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb { background: #0284c7; border-radius: 4px; }
+    .canvas-container { position: relative; touch-action: none; }
+  </style>
+</head>
+<body class="p-3 sm:p-5 flex flex-col min-h-screen">
+
+  <!-- Header -->
+  <header class="sketch-card p-4 mb-4 flex flex-col md:flex-row justify-between items-center gap-4">
+    <div class="flex items-center gap-3">
+      <div class="w-12 h-12 rounded-xl bg-sky-300 border-3 border-sky-700 flex items-center justify-center text-2xl shadow-sm"></div>
+      <div>
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-sky-950 tracking-wide leading-tight">AeroCraft AI - Rocket Lab</h1>
+        <p class="text-xs sm:text-sm text-sky-700 font-bold">Draw a rocket, see it in 3D, then fly it</p>
+      </div>
+    </div>
+    <div class="flex gap-3">
+      <button id="nav-tab-studio" onclick="switchMainTab('studio')" class="sketch-btn sketch-btn-accent px-5 py-2.5 text-base">1. Rocket Studio</button>
+      <button id="nav-tab-sim" onclick="switchMainTab('sim')" class="sketch-btn px-5 py-2.5 text-base">2. Launch Simulator</button>
+    </div>
+  </header>
+
+  <!-- Studio tab -->
+  <main id="view-studio" class="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-grow">
+
+    <!-- Controls -->
+    <section class="lg:col-span-4 sketch-card p-4 sm:p-5 flex flex-col gap-4 overflow-y-auto max-h-[82vh]">
+      <div class="border-b-2 border-sky-200 pb-2 flex justify-between items-center">
+        <h2 class="text-xl font-bold text-sky-900">Rocket Design</h2>
+        <span class="text-xs bg-sky-100 border border-sky-300 text-sky-800 px-2.5 py-1 rounded-full font-bold">Live 3D</span>
+      </div>
+
+      <div class="flex border-b-2 border-sky-200 gap-1 pb-1 overflow-x-auto text-xs font-bold">
+        <button onclick="switchPartSubTab('nose')" id="subtab-nose" class="px-3 py-1.5 rounded-lg bg-sky-300 text-sky-950">1. Nose</button>
+        <button onclick="switchPartSubTab('body')" id="subtab-body" class="px-3 py-1.5 rounded-lg bg-sky-100 text-sky-700">2. Fuselage</button>
+        <button onclick="switchPartSubTab('fins')" id="subtab-fins" class="px-3 py-1.5 rounded-lg bg-sky-100 text-sky-700">3. Fins</button>
+        <button onclick="switchPartSubTab('engine')" id="subtab-engine" class="px-3 py-1.5 rounded-lg bg-sky-100 text-sky-700">4. Engine</button>
+        <button onclick="switchPartSubTab('payload')" id="subtab-payload" class="px-3 py-1.5 rounded-lg bg-sky-100 text-sky-700">5. Mission</button>
+      </div>
+
+      <!-- Nose -->
+      <div id="part-group-nose" class="space-y-3">
+        <div class="space-y-1">
+          <label class="text-xs font-bold text-sky-900 flex justify-between"><span>Nose Shape:</span><span id="lbl-nose-shape" class="text-sky-600">Tangent Ogive</span></label>
+          <select id="param-nose-shape" onchange="updateDesignParameters()" class="w-full p-2 border-2 border-sky-300 rounded-lg text-sm bg-sky-50 font-bold">
+            <option value="ogive">Tangent ogive (Cd 0.12)</option>
+            <option value="conical">Conical (Cd 0.18)</option>
+            <option value="parabolic">Parabolic (Cd 0.15)</option>
+          </select>
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs font-bold text-sky-900 flex justify-between"><span>Nose Height (m):</span><span id="lbl-nose-height" class="text-sky-600">1.8 m</span></label>
+          <input type="range" id="param-nose-height" min="0.5" max="4.0" step="0.1" value="1.8" oninput="updateDesignParameters()" class="w-full">
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs font-bold text-sky-900 flex justify-between"><span>Base Radius (m):</span><span id="lbl-nose-radius" class="text-sky-600">0.50 m</span></label>
+          <input type="range" id="param-nose-radius" min="0.2" max="1.5" step="0.05" value="0.50" oninput="updateDesignParameters()" class="w-full">
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs font-bold text-sky-900 flex justify-between"><span>Nose Cone Color:</span><span id="lbl-nose-color" class="text-sky-600">Sky Cyan</span></label>
+          <input type="color" id="param-nose-color" value="#38bdf8" onchange="updateDesignParameters()" class="w-full h-9 rounded-lg border-2 border-sky-300 cursor-pointer">
+        </div>
+      </div>
+
+      <!-- Body -->
+      <div id="part-group-body" class="space-y-3 hidden">
+        <div class="space-y-1">
+          <label class="text-xs font-bold text-sky-900 flex justify-between"><span>Stages:</span><span id="lbl-body-stages" class="text-sky-600">Single Stage</span></label>
+          <select id="param-body-stages" onchange="updateDesignParameters()" class="w-full p-2 border-2 border-sky-300 rounded-lg text-sm bg-sky-50 font-bold">
+            <option value="1">1 stage</option>
+            <option value="2">2 stages</option>
+            <option value="3">3 stages</option>
+          </select>
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs font-bold text-sky-900 flex justify-between"><span>Body Length (m):</span><span id="lbl-body-length" class="text-sky-600">8.0 m</span></label>
+          <input type="range" id="param-body-length" min="3.0" max="25.0" step="0.5" value="8.0" oninput="updateDesignParameters()" class="w-full">
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs font-bold text-sky-900 flex justify-between"><span>Body Diameter (m):</span><span id="lbl-body-diameter" class="text-sky-600">1.0 m</span></label>
+          <input type="range" id="param-body-diameter" min="0.4" max="3.0" step="0.1" value="1.0" oninput="updateDesignParameters()" class="w-full">
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs font-bold text-sky-900 flex justify-between"><span>Wall Thickness (mm):</span><span id="lbl-body-wall" class="text-sky-600">4.0 mm</span></label>
+          <input type="range" id="param-body-wall" min="1.5" max="12.0" step="0.5" value="4.0" oninput="updateDesignParameters()" class="w-full">
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs font-bold text-sky-900 flex justify-between"><span>Body Color:</span><span id="lbl-body-color" class="text-sky-600">Slate Carbon</span></label>
+          <input type="color" id="param-body-color" value="#0f172a" onchange="updateDesignParameters()" class="w-full h-9 rounded-lg border-2 border-sky-300 cursor-pointer">
+        </div>
+      </div>
+
+      <!-- Fins -->
+      <div id="part-group-fins" class="space-y-3 hidden">
+        <div class="space-y-1">
+          <label class="text-xs font-bold text-sky-900 flex justify-between"><span>Fin Set Count:</span><span id="lbl-fin-count" class="text-sky-600">4 Fins</span></label>
+          <select id="param-fin-count" onchange="updateDesignParameters()" class="w-full p-2 border-2 border-sky-300 rounded-lg text-sm bg-sky-50 font-bold">
+            <option value="0">0 (no fins)</option>
+            <option value="3">3 fins</option>
+            <option value="4" selected>4 fins</option>
+            <option value="6">6 fins</option>
+          </select>
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs font-bold text-sky-900 flex justify-between"><span>Fin Shape:</span><span id="lbl-fin-shape" class="text-sky-600">Swept Back</span></label>
+          <select id="param-fin-shape" onchange="updateDesignParameters()" class="w-full p-2 border-2 border-sky-300 rounded-lg text-sm bg-sky-50 font-bold">
+            <option value="swept">Swept back</option>
+            <option value="delta">Delta</option>
+            <option value="trapezoid">Trapezoid</option>
+          </select>
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs font-bold text-sky-900 flex justify-between"><span>Fin Span (m):</span><span id="lbl-fin-span" class="text-sky-600">0.70 m</span></label>
+          <input type="range" id="param-fin-span" min="0.1" max="2.5" step="0.05" value="0.70" oninput="updateDesignParameters()" class="w-full">
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs font-bold text-sky-900 flex justify-between"><span>Fin Sweep Angle (°):</span><span id="lbl-fin-sweep" class="text-sky-600">35°</span></label>
+          <input type="range" id="param-fin-sweep" min="0" max="60" step="5" value="35" oninput="updateDesignParameters()" class="w-full">
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs font-bold text-sky-900 flex justify-between"><span>Fin Color:</span><span id="lbl-fin-color" class="text-sky-600">Deep Blue</span></label>
+          <input type="color" id="param-fin-color" value="#0284c7" onchange="updateDesignParameters()" class="w-full h-9 rounded-lg border-2 border-sky-300 cursor-pointer">
+        </div>
+      </div>
+
+      <!-- Engine -->
+      <div id="part-group-engine" class="space-y-3 hidden">
+        <div class="space-y-1">
+          <label class="text-xs font-bold text-sky-900 flex justify-between"><span>Fuel:</span><span id="lbl-engine-fuel" class="text-sky-600">Kerosene (RP-1/LOX)</span></label>
+          <select id="param-engine-fuel" onchange="updateDesignParameters()" class="w-full p-2 border-2 border-sky-300 rounded-lg text-sm bg-sky-50 font-bold">
+            <option value="rp1">RP-1 / LOX (Isp 310 s)</option>
+            <option value="lh2">Liquid hydrogen / LOX (Isp 450 s)</option>
+            <option value="ch4">Liquid methane / LOX (Isp 380 s)</option>
+          </select>
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs font-bold text-sky-900 flex justify-between"><span>Engines:</span><span id="lbl-engine-cluster" class="text-sky-600">3 Engines</span></label>
+          <select id="param-engine-cluster" onchange="updateDesignParameters()" class="w-full p-2 border-2 border-sky-300 rounded-lg text-sm bg-sky-50 font-bold">
+            <option value="1">1 engine, centered</option>
+            <option value="3" selected>3 engines</option>
+            <option value="4">4 engines</option>
+            <option value="7">7 engines</option>
+          </select>
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs font-bold text-sky-900 flex justify-between"><span>Engine Thrust (kN):</span><span id="lbl-engine-thrust" class="text-sky-600">120 kN</span></label>
+          <input type="range" id="param-engine-thrust" min="20" max="800" step="10" value="120" oninput="updateDesignParameters()" class="w-full">
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs font-bold text-sky-900 flex justify-between"><span>Propellant Mass (kg):</span><span id="lbl-engine-propellant" class="text-sky-600">2200 kg</span></label>
+          <input type="range" id="param-engine-propellant" min="300" max="15000" step="100" value="2200" oninput="updateDesignParameters()" class="w-full">
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs font-bold text-sky-900 flex justify-between"><span>Engine Bell Radius (m):</span><span id="lbl-engine-bell" class="text-sky-600">0.35 m</span></label>
+          <input type="range" id="param-engine-bell" min="0.1" max="1.0" step="0.05" value="0.35" oninput="updateDesignParameters()" class="w-full">
+        </div>
+      </div>
+
+      <!-- Payload, parachute, target and auto-tune -->
+      <div id="part-group-payload" class="space-y-3 hidden">
+        <div class="space-y-1">
+          <label class="text-xs font-bold text-sky-900 flex justify-between"><span>Payload Mass (kg):</span><span id="lbl-payload-mass" class="text-sky-600">150 kg</span></label>
+          <input type="range" id="param-payload-mass" min="10" max="2500" step="10" value="150" oninput="updateDesignParameters()" class="w-full">
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs font-bold text-sky-900 flex justify-between"><span>Parachute Diameter (m):</span><span id="lbl-chute-size" class="text-sky-600">6.0 m</span></label>
+          <input type="range" id="param-chute-size" min="2.0" max="20.0" step="0.5" value="6.0" oninput="updateDesignParameters()" class="w-full">
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs font-bold text-sky-900 flex justify-between"><span>Parachute Deploy Altitude (m):</span><span id="lbl-chute-alt" class="text-sky-600">1200 m</span></label>
+          <input type="range" id="param-chute-alt" min="200" max="5000" step="100" value="1200" oninput="updateDesignParameters()" class="w-full">
+        </div>
+
+        <!-- Target apogee, auto-tune and design review -->
+        <div class="space-y-2 border-t-2 border-sky-200 pt-3">
+          <label class="text-xs font-bold text-sky-900">Target Apogee</label>
+          <select id="param-target" onchange="updateDesignParameters()" class="w-full p-2 border-2 border-sky-300 rounded-lg text-sm bg-sky-50 font-bold">
+            <option value="3000">Sounding rocket: 3 km</option>
+            <option value="30000" selected>Stratosphere: 30 km</option>
+            <option value="100000">Karman line: 100 km</option>
+          </select>
+          <button onclick="autoTune()" class="sketch-btn sketch-btn-accent w-full py-2 text-sm">Auto-Tune Engine & Chute</button>
+          <div id="ai-review" class="text-xs font-bold bg-sky-50 border-2 border-sky-200 rounded-lg p-2 leading-relaxed"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3D view and sketchpad -->
+    <section class="lg:col-span-8 flex flex-col gap-4">
+
+      <div class="sketch-card p-4 relative flex-grow flex flex-col min-h-[420px]">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
+          <div>
+            <h3 class="text-lg font-extrabold text-sky-900">3D View</h3>
+            <p class="text-xs text-sky-600 font-bold">Drag to rotate, scroll to zoom</p>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="zoom3DCamera(0.8)" class="sketch-btn px-2.5 py-1 text-xs">Zoom In</button>
+            <button onclick="zoom3DCamera(1.2)" class="sketch-btn px-2.5 py-1 text-xs">Zoom Out</button>
+            <button onclick="toggleSpin()" class="sketch-btn px-2.5 py-1 text-xs">Spin</button>
+            <button onclick="reset3DCameraFrame()" class="sketch-btn sketch-btn-accent px-2.5 py-1 text-xs">Reset View</button>
+          </div>
+        </div>
+
+        <div id="viewport-3d-container" class="w-full h-80 sm:h-96 relative border-3 border-sky-300 rounded-xl overflow-hidden bg-slate-900 cursor-grab active:cursor-grabbing">
+          <div class="absolute bottom-3 left-3 right-3 z-10 bg-white/90 backdrop-blur-sm border-2 border-sky-400 p-2.5 rounded-lg text-xs font-bold grid grid-cols-2 sm:grid-cols-4 gap-2 text-sky-950 shadow-md">
+            <div><span class="text-sky-600 block">Dry Mass:</span> <span id="dyn-dry-mass">0 kg</span></div>
+            <div><span class="text-sky-600 block">Wet Mass:</span> <span id="dyn-wet-mass">0 kg</span></div>
+            <div><span class="text-sky-600 block">Frontal Area:</span> <span id="dyn-area">0.00 m²</span></div>
+            <div><span class="text-sky-600 block">Drag Coeff (Cd):</span> <span id="dyn-cd">0.00</span></div>
+            <div><span class="text-sky-600 block">Liftoff TWR:</span> <span id="dyn-twr">0.00</span></div>
+            <div><span class="text-sky-600 block">Center of Mass:</span> <span id="dyn-com">0.00 m</span></div>
+            <div><span class="text-sky-600 block">Center of Pressure:</span> <span id="dyn-cop">0.00 m</span></div>
+            <div><span class="text-sky-600 block">Stability:</span> <span id="dyn-margin" class="text-emerald-700">0.0 Cal</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sketchpad -->
+      <div class="sketch-card p-4 flex flex-col gap-3">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+          <div>
+            <h4 class="text-base font-extrabold text-sky-900">Sketchpad</h4>
+            <p class="text-xs text-sky-600 font-bold">Draw the rocket's side outline. The 3D model follows it.</p>
+          </div>
+          <div class="flex flex-wrap gap-1.5 text-xs">
+            <span class="self-center font-bold text-sky-800">Presets:</span>
+            <button onclick="loadSketchPreset('heavy')" class="sketch-btn px-2 py-1 text-xs">Heavy Lifter</button>
+            <button onclick="loadSketchPreset('delta')" class="sketch-btn px-2 py-1 text-xs">Delta Wing</button>
+            <button onclick="loadSketchPreset('starship')" class="sketch-btn px-2 py-1 text-xs">Sci-Fi Cruiser</button>
+            <button onclick="loadSketchPreset('pencil')" class="sketch-btn px-2 py-1 text-xs">Pencil Launcher</button>
+            <button onclick="clearSketchCanvas()" class="sketch-btn sketch-btn-danger px-2 py-1 text-xs">Clear</button>
+          </div>
+        </div>
+
+        <div class="canvas-container w-full h-48 border-2 border-dashed border-sky-400 bg-sky-50 rounded-lg relative overflow-hidden">
+          <canvas id="sketch-canvas" class="w-full h-full cursor-crosshair"></canvas>
+        </div>
+
+        <div class="flex justify-between items-center text-xs text-sky-700 font-bold gap-3">
+          <span>Each stroke rebuilds the rocket from your outline.</span>
+          <button onclick="switchMainTab('sim')" class="sketch-btn sketch-btn-accent px-6 py-2 text-sm whitespace-nowrap">Go to Launch Simulator</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Simulator tab -->
+  <main id="view-sim" class="hidden grid grid-cols-1 lg:grid-cols-12 gap-5 flex-grow">
+
+    <section class="lg:col-span-4 sketch-card p-4 sm:p-5 flex flex-col gap-4">
+      <div class="border-b-2 border-sky-200 pb-2 flex justify-between items-center">
+        <h2 class="text-xl font-bold text-sky-900">Flight Data</h2>
+        <span id="sim-status-pill" class="text-xs bg-emerald-100 text-emerald-800 border border-emerald-300 px-3 py-1 rounded-full font-bold">On the pad</span>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2 text-center">
+        <div class="p-2.5 bg-sky-50 border-2 border-sky-200 rounded-lg"><div class="text-xs font-bold text-sky-600">Altitude</div><div id="tele-alt" class="text-2xl font-black text-sky-950">0.0 m</div></div>
+        <div class="p-2.5 bg-sky-50 border-2 border-sky-200 rounded-lg"><div class="text-xs font-bold text-sky-600">Velocity</div><div id="tele-vel" class="text-2xl font-black text-sky-950">0.0 m/s</div></div>
+        <div class="p-2.5 bg-sky-50 border-2 border-sky-200 rounded-lg"><div class="text-xs font-bold text-sky-600">Mach Number</div><div id="tele-mach" class="text-lg font-bold text-sky-900">0.00</div></div>
+        <div class="p-2.5 bg-sky-50 border-2 border-sky-200 rounded-lg"><div class="text-xs font-bold text-sky-600">Max Q</div><div id="tele-maxq" class="text-lg font-bold text-sky-900">0 kPa</div></div>
+      </div>
+
+      <div class="space-y-1.5 text-xs font-bold border-t border-sky-100 pt-3 text-sky-900">
+        <div class="flex justify-between"><span>Time since launch:</span> <span id="tele-time" class="text-sky-600">0.0 s</span></div>
+        <div class="flex justify-between"><span>Phase:</span> <span id="tele-phase" class="text-sky-600">Pre-launch</span></div>
+        <div class="flex justify-between"><span>Thrust:</span> <span id="tele-thrust" class="text-sky-600">0.0 kN</span></div>
+        <div class="flex justify-between"><span>Drag:</span> <span id="tele-drag" class="text-sky-600">0.0 kN</span></div>
+        <div class="flex justify-between"><span>Mass:</span> <span id="tele-mass" class="text-sky-600">0 kg</span></div>
+        <div class="flex justify-between"><span>Air density:</span> <span id="tele-density" class="text-sky-600">1.225 kg/m³</span></div>
+      </div>
+
+      <div class="flex-grow flex flex-col justify-end pt-2">
+        <div class="text-xs font-bold text-sky-800 mb-1 flex justify-between"><span>Flight Graph</span><span>Altitude (solid), speed (dashed)</span></div>
+        <canvas id="graph-canvas" class="w-full h-36 border-2 border-sky-300 rounded-lg bg-slate-950"></canvas>
+      </div>
+
+      <!-- Speed controls -->
+      <div class="flex gap-1.5 items-center text-xs font-bold text-sky-900 flex-wrap">
+        <span>Speed:</span>
+        <button data-speed="1" class="sketch-btn px-2 py-1">1×</button>
+        <button data-speed="2.5" class="sketch-btn sketch-btn-accent px-2 py-1">2.5×</button>
+        <button data-speed="5" class="sketch-btn px-2 py-1">5×</button>
+        <button data-speed="10" class="sketch-btn px-2 py-1">10×</button>
+        <button data-speed="25" class="sketch-btn px-2 py-1">25×</button>
+        <button data-speed="50" class="sketch-btn px-2 py-1">50×</button>
+        <button id="btn-pause" onclick="togglePause()" class="sketch-btn px-2 py-1 ml-auto">Pause</button>
+      </div>
+
+      <div class="flex gap-2 pt-1">
+        <button id="btn-launch" onclick="launchMission()" class="sketch-btn sketch-btn-accent flex-1 py-3 text-base">Launch</button>
+        <button id="btn-abort" onclick="abortMission()" class="sketch-btn sketch-btn-danger px-4 py-3 text-base">Reset</button>
+      </div>
+    </section>
+
+    <section class="lg:col-span-8 sketch-card p-4 flex flex-col relative min-h-[520px]">
+      <div class="flex justify-between items-center mb-2">
+        <h3 class="text-lg font-extrabold text-sky-900">Flight View</h3>
+        <span class="text-xs font-bold text-sky-600">The sky changes with altitude</span>
+      </div>
+      <div class="w-full flex-grow relative border-3 border-sky-300 rounded-xl overflow-hidden bg-sky-300">
+        <canvas id="sim-canvas" class="w-full h-full block"></canvas>
+      </div>
+    </section>
+  </main>
+
+  <!-- Flight report -->
+  <div id="modal-recap" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div class="sketch-card bg-white p-6 max-w-lg w-full flex flex-col gap-4 text-sky-950 shadow-2xl">
+      <div class="border-b-2 border-sky-200 pb-2">
+        <h2 class="text-2xl font-black text-sky-900">Flight Report</h2>
+        <p class="text-xs text-sky-600 font-bold">How the flight went</p>
+      </div>
+      <div id="recap-badge" class="p-3 rounded-lg text-center font-bold text-base border-2"></div>
+      <div class="grid grid-cols-2 gap-3 text-xs font-bold">
+        <div class="p-2 bg-sky-50 border border-sky-200 rounded"><span class="text-sky-600 block">Apogee:</span><span id="recap-apogee" class="text-base text-sky-900">0 m</span></div>
+        <div class="p-2 bg-sky-50 border border-sky-200 rounded"><span class="text-sky-600 block">Top Speed:</span><span id="recap-maxvel" class="text-base text-sky-900">0 m/s</span></div>
+        <div class="p-2 bg-sky-50 border border-sky-200 rounded"><span class="text-sky-600 block">Max Q:</span><span id="recap-q" class="text-base text-sky-900">0 kPa</span></div>
+        <div class="p-2 bg-sky-50 border border-sky-200 rounded"><span class="text-sky-600 block">Landing Speed:</span><span id="recap-impact" class="text-base text-sky-900">0 m/s</span></div>
+      </div>
+      <p id="recap-analysis" class="p-3 bg-sky-50 border border-sky-200 rounded-lg text-xs leading-relaxed font-bold text-sky-900"></p>
+      <div class="flex gap-3 pt-2">
+        <button onclick="closeRecapModal(true)" class="sketch-btn sketch-btn-accent flex-1 py-3 text-sm">Back to Design</button>
+        <button onclick="closeRecapModal(false)" class="sketch-btn flex-1 py-3 text-sm">Fly Again</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ---- Rocket parameters ----
+    const ROCKET_PARAM = {
+      noseShape: 'ogive', noseHeight: 1.8, noseRadius: 0.50, noseColor: '#38bdf8',
+      bodyStages: 1, bodyLength: 8.0, bodyDiameter: 1.0, bodyWallThickness: 4.0, bodyColor: '#0f172a',
+      finCount: 4, finShape: 'swept', finSpan: 0.70, finSweep: 35, finColor: '#0284c7',
+      engineFuel: 'rp1', engineCluster: 3, engineThrust: 120, enginePropellant: 2200, engineBellRadius: 0.35,
+      payloadMass: 150, chuteDiameter: 6.0, chuteAltitude: 1200,
+
+      // Outline taken from the sketch, in metres. null means use the built-in nose/fin shapes.
+      sketch: null,
+
+      // Calculated values
+      dryMass: 0, wetMass: 0, frontalArea: 0, baseCd: 0.20,
+      com: 0, cop: 0, stabilityMargin: 0, isp: 310
+    };
+
+    // ---- 3D view ----
+    let scene3D, camera3D, renderer3D, rocketMeshGroup;
+    let isDragging3D = false;
+    let autoSpin = true;
+    let lastMousePos = { x: 0, y: 0 };
+
+    function init3DViewport() {
+      const container = document.getElementById('viewport-3d-container');
+      if (!container) return;
+
+      scene3D = new THREE.Scene();
+      scene3D.background = new THREE.Color(0x0f172a);
+      camera3D = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+      renderer3D = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer3D.setSize(container.clientWidth, container.clientHeight);
+      container.appendChild(renderer3D.domElement);
+
+      scene3D.add(new THREE.AmbientLight(0xffffff, 0.8));
+      const dir1 = new THREE.DirectionalLight(0xffffff, 0.9); dir1.position.set(20, 40, 30); scene3D.add(dir1);
+      const dir2 = new THREE.DirectionalLight(0x7dd3fc, 0.4); dir2.position.set(-20, -10, -20); scene3D.add(dir2);
+
+      rocketMeshGroup = new THREE.Group();
+      scene3D.add(rocketMeshGroup);
+
+      container.addEventListener('mousedown', (e) => { isDragging3D = true; lastMousePos = { x: e.clientX, y: e.clientY }; });
+      window.addEventListener('mousemove', (e) => {
+        if (!isDragging3D) return;
+        rocketMeshGroup.rotation.y += (e.clientX - lastMousePos.x) * 0.008;
+        rocketMeshGroup.rotation.x += (e.clientY - lastMousePos.y) * 0.008;
+        lastMousePos = { x: e.clientX, y: e.clientY };
+      });
+      window.addEventListener('mouseup', () => { isDragging3D = false; });
+      container.addEventListener('wheel', (e) => { e.preventDefault(); zoom3DCamera(e.deltaY > 0 ? 1.1 : 0.9); }, { passive: false });
+
+      // Rotate by touch
+      container.addEventListener('touchstart', (e) => { isDragging3D = true; lastMousePos = { x: e.touches[0].clientX, y: e.touches[0].clientY }; }, { passive: true });
+      container.addEventListener('touchmove', (e) => {
+        if (!isDragging3D) return;
+        rocketMeshGroup.rotation.y += (e.touches[0].clientX - lastMousePos.x) * 0.008;
+        rocketMeshGroup.rotation.x += (e.touches[0].clientY - lastMousePos.y) * 0.008;
+        lastMousePos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      }, { passive: true });
+      container.addEventListener('touchend', () => { isDragging3D = false; });
+
+      rebuild3DRocket();
+      reset3DCameraFrame();
+
+      (function render3DLoop() {
+        requestAnimationFrame(render3DLoop);
+        if (!isDragging3D && autoSpin && rocketMeshGroup) rocketMeshGroup.rotation.y += 0.003;
+        renderer3D.render(scene3D, camera3D);
+      })();
+    }
+
+    // Rebuild the 3D model from the parameters, or from the sketch if there is one
+    function rebuild3DRocket() {
+      if (!rocketMeshGroup) return;
+      while (rocketMeshGroup.children.length > 0) rocketMeshGroup.remove(rocketMeshGroup.children[0]);
+
+      const r = ROCKET_PARAM.bodyDiameter / 2;
+      const totalBodyLen = ROCKET_PARAM.bodyLength;
+      const noseLen = ROCKET_PARAM.noseHeight;
+      const Ltot = totalBodyLen + noseLen;
+
+      const noseMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(ROCKET_PARAM.noseColor), roughness: 0.2, metalness: 0.5, side: THREE.DoubleSide });
+      const bodyMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(ROCKET_PARAM.bodyColor), roughness: 0.3, metalness: 0.7, side: THREE.DoubleSide });
+      const finMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(ROCKET_PARAM.finColor), roughness: 0.3, metalness: 0.4 });
+      const engineMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.5, metalness: 0.8 });
+
+      // Body, nose and fins
+      const SK = ROCKET_PARAM.sketch;
+      if (SK) {
+        // Spin the sketch outline around the axis for the body, with the nose colored separately
+        const lathe = (from, to, mat) => {
+          const pts = SK.pts.filter(q => q.y >= from - 1e-6 && q.y <= to + 1e-6)
+                            .map(q => new THREE.Vector2(Math.max(0.01, q.hull), q.y));
+          if (pts.length > 1) rocketMeshGroup.add(new THREE.Mesh(new THREE.LatheGeometry(pts, 64), mat));
+        };
+        lathe(0, SK.noseY, bodyMat);
+        lathe(SK.noseY, SK.H, noseMat);
+
+        // Anything sticking out past the body becomes a flat fin
+        SK.fins.forEach((poly) => {
+          const geo = new THREE.ExtrudeGeometry(new THREE.Shape(poly.map(([x, y]) => new THREE.Vector2(x, y))), { depth: 0.04, bevelEnabled: false });
+          geo.translate(0, 0, -0.02);
+          const n = Math.max(ROCKET_PARAM.finCount, 0);
+          for (let i = 0; i < n; i++) {
+            const m = new THREE.Mesh(geo, finMat);
+            m.rotation.y = (i / n) * Math.PI * 2;
+            rocketMeshGroup.add(m);
+          }
+        });
+      } else {
+        const bodyMesh = new THREE.Mesh(new THREE.CylinderGeometry(r, r, totalBodyLen, 32), bodyMat);
+        bodyMesh.position.y = totalBodyLen / 2;
+        rocketMeshGroup.add(bodyMesh);
+
+        let noseGeo;
+        if (ROCKET_PARAM.noseShape === 'conical') {
+          noseGeo = new THREE.ConeGeometry(r, noseLen, 32);
+        } else {
+          const points = [];
+          for (let i = 0; i <= 20; i++) {
+            const t = i / 20;
+            points.push(new THREE.Vector2(Math.max(0.01, r * (1 - Math.pow(t, 1.5))), t * noseLen));
+          }
+          noseGeo = new THREE.LatheGeometry(points, 32);
+        }
+        const noseMesh = new THREE.Mesh(noseGeo, noseMat);
+        noseMesh.position.y = totalBodyLen + (ROCKET_PARAM.noseShape === 'conical' ? noseLen / 2 : 0);
+        rocketMeshGroup.add(noseMesh);
+      }
+
+      // Stage rings
+      if (ROCKET_PARAM.bodyStages > 1) {
+        for (let s = 1; s < ROCKET_PARAM.bodyStages; s++) {
+          const ring = new THREE.Mesh(new THREE.TorusGeometry(r + 0.02, 0.03, 16, 32), finMat);
+          ring.rotation.x = Math.PI / 2;
+          ring.position.y = (totalBodyLen / ROCKET_PARAM.bodyStages) * s;
+          rocketMeshGroup.add(ring);
+        }
+      }
+
+      // Fins (only when there's no sketch; sketch fins are built above)
+      if (!SK) {
+      const fins = ROCKET_PARAM.finCount, span = ROCKET_PARAM.finSpan;
+      for (let i = 0; i < fins; i++) {
+        const angle = (i / fins) * Math.PI * 2;
+        const shape = new THREE.Shape();
+        shape.moveTo(0, 0);
+        shape.lineTo(span, 0);
+        if (ROCKET_PARAM.finShape === 'swept') {
+          shape.lineTo(span * 0.4, totalBodyLen * 0.2);
+          shape.lineTo(0, totalBodyLen * 0.22);
+        } else if (ROCKET_PARAM.finShape === 'delta') {
+          shape.lineTo(0, totalBodyLen * 0.25);
+        } else {
+          shape.lineTo(span * 0.6, totalBodyLen * 0.18);
+          shape.lineTo(0, totalBodyLen * 0.2);
+        }
+        const finMesh = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth: 0.03, bevelEnabled: false }), finMat);
+        finMesh.position.y = 0.1;
+        finMesh.rotation.y = angle;
+        finMesh.translateOnAxis(new THREE.Vector3(1, 0, 0), r);
+        rocketMeshGroup.add(finMesh);
+      }
+
+      }
+
+      // Engine nozzles
+      const clusterCount = ROCKET_PARAM.engineCluster, bellR = ROCKET_PARAM.engineBellRadius;
+      for (let c = 0; c < clusterCount; c++) {
+        const bell = new THREE.Mesh(new THREE.ConeGeometry(bellR, 0.6, 24, 1, true), engineMat);
+        bell.rotation.x = Math.PI;
+        if (clusterCount === 1) {
+          bell.position.set(0, -0.3, 0);
+        } else {
+          const a = (c / clusterCount) * Math.PI * 2, dist = Math.max(0.1, r - bellR * 0.8);
+          bell.position.set(Math.cos(a) * dist, -0.3, Math.sin(a) * dist);
+        }
+        rocketMeshGroup.add(bell);
+      }
+    }
+
+    function toggleSpin() {
+      autoSpin = !autoSpin;
+      if (!autoSpin && rocketMeshGroup) rocketMeshGroup.rotation.set(0, 0, 0);   // side view, same as the sketch
+    }
+
+    function reset3DCameraFrame() {
+      if (!camera3D) return;
+      const h = ROCKET_PARAM.bodyLength + ROCKET_PARAM.noseHeight;
+      camera3D.position.set(0, h * 0.5, h * 2.2);
+      camera3D.lookAt(0, h * 0.5, 0);
+      if (rocketMeshGroup) rocketMeshGroup.rotation.set(0, 0, 0);
+    }
+
+    function zoom3DCamera(factor) {
+      if (!camera3D) return;
+      camera3D.position.multiplyScalar(factor);
+      camera3D.lookAt(0, (ROCKET_PARAM.bodyLength + ROCKET_PARAM.noseHeight) * 0.5, 0);
+    }
+
+    // ---- Sketchpad ----
+    let sketchCanvas, sketchCtx;
+    let sketchApplying = false;   // true while the sketch is filling in the sliders
+
+    function initSketchCanvas() {
+      sketchCanvas = document.getElementById('sketch-canvas');
+      if (!sketchCanvas) return;
+      sketchCtx = sketchCanvas.getContext('2d');
+      const rect = sketchCanvas.parentElement.getBoundingClientRect();
+      sketchCanvas.width = rect.width;
+      sketchCanvas.height = rect.height;
+
+      let drawing = false;
+      const pos = (e) => { const c = sketchCanvas.getBoundingClientRect(); return [e.clientX - c.left, e.clientY - c.top]; };
+
+      sketchCanvas.addEventListener('pointerdown', (e) => {
+        drawing = true;
+        sketchCanvas.setPointerCapture(e.pointerId);
+        sketchCtx.beginPath();
+        sketchCtx.moveTo(...pos(e));
+      });
+      sketchCanvas.addEventListener('pointerup', () => { drawing = false; analyzeSketchContours(); });
+      sketchCanvas.addEventListener('pointermove', (e) => {
+        if (!drawing) return;
+        sketchCtx.lineWidth = 4;
+        sketchCtx.lineCap = 'round';
+        sketchCtx.strokeStyle = '#0284c7';
+        sketchCtx.lineTo(...pos(e));
+        sketchCtx.stroke();
+      });
+
+      loadSketchPreset('pencil');
+    }
+
+    function clearSketchCanvas() {
+      if (!sketchCtx) return;
+      sketchCtx.clearRect(0, 0, sketchCanvas.width, sketchCanvas.height);
+      updateDesignParameters();   // also clears the sketch outline
+    }
+
+    function loadSketchPreset(preset) {
+      clearSketchCanvas();
+      const w = sketchCanvas.width, h = sketchCanvas.height, cx = w / 2, K = 0.45;   // K makes the presets thinner
+      sketchCtx.strokeStyle = '#0284c7';
+      sketchCtx.lineWidth = 4;
+      sketchCtx.beginPath();
+
+      if (preset === 'pencil') {
+        sketchCtx.moveTo(cx, 10);
+        sketchCtx.lineTo(cx - 20 * K, 40); sketchCtx.lineTo(cx - 20 * K, h - 30);
+        sketchCtx.lineTo(cx - 50 * K, h - 10); sketchCtx.lineTo(cx + 50 * K, h - 10);
+        sketchCtx.lineTo(cx + 20 * K, h - 30); sketchCtx.lineTo(cx + 20 * K, 40);
+      } else if (preset === 'heavy') {
+        sketchCtx.moveTo(cx, 10);
+        sketchCtx.lineTo(cx - 40 * K, 50); sketchCtx.lineTo(cx - 40 * K, h - 20);
+        sketchCtx.lineTo(cx + 40 * K, h - 20); sketchCtx.lineTo(cx + 40 * K, 50);
+      } else if (preset === 'delta') {
+        sketchCtx.moveTo(cx, 10);
+        sketchCtx.lineTo(cx - 15 * K, 30); sketchCtx.lineTo(cx - 15 * K, h - 60);
+        sketchCtx.lineTo(cx - 70 * K, h - 10); sketchCtx.lineTo(cx + 70 * K, h - 10);
+        sketchCtx.lineTo(cx + 15 * K, h - 60); sketchCtx.lineTo(cx + 15 * K, 30);
+      } else if (preset === 'starship') {
+        sketchCtx.moveTo(cx, 10);
+        sketchCtx.lineTo(cx - 25 * K, 45); sketchCtx.lineTo(cx - 25 * K, h - 40);
+        sketchCtx.lineTo(cx - 60 * K, h - 30); sketchCtx.lineTo(cx - 40 * K, h - 10);
+        sketchCtx.lineTo(cx + 40 * K, h - 10); sketchCtx.lineTo(cx + 60 * K, h - 30);
+        sketchCtx.lineTo(cx + 25 * K, h - 40); sketchCtx.lineTo(cx + 25 * K, 45);
+      }
+      sketchCtx.closePath();
+      sketchCtx.stroke();
+      analyzeSketchContours();
+    }
+
+    // Read the outline from the canvas and rebuild the rocket to match
+    function analyzeSketchContours() {
+      if (!sketchCtx) return;
+      const w = sketchCanvas.width, h = sketchCanvas.height;
+      const d = sketchCtx.getImageData(0, 0, w, h).data;
+      const half = [];
+      let top = -1, bot = -1;
+      for (let y = 0; y < h; y++) {
+        let mn = w, mx = -1;
+        for (let x = 0; x < w; x++) {
+          if (d[(y * w + x) * 4 + 3] > 100) { if (x < mn) mn = x; if (x > mx) mx = x; }
+        }
+        half.push(mx >= 0 ? Math.max(0.5, (mx - mn) / 2 - 2) : 0);   // subtract half the 4 px stroke
+        if (mx >= 0) { if (top < 0) top = y; bot = y; }
+      }
+      if (top < 0 || bot - top < 24) return;
+      top += 2; bot -= 2;
+
+      // Sample every 2 px, nose first
+      const R = [];
+      for (let y = top; y <= bot; y += 2) R.push({ py: y, w: half[y] });
+      const mid = R.slice(Math.floor(R.length * 0.3), Math.ceil(R.length * 0.7)).map(r => r.w).sort((a, b) => a - b);
+      const bodyHalf = Math.max(1, mid[mid.length >> 1]);              // usual body half-width
+      let noseRow = R.findIndex(r => r.w >= bodyHalf * 0.9);           // row where the nose ends
+      if (noseRow < 1) noseRow = 1;
+      const midR = R[noseRow >> 1].w / bodyHalf;                       // how curved the nose is, used to pick a drag value
+
+      // One scale for both axes so the proportions match the drawing
+      const s = (ROCKET_PARAM.bodyLength + ROCKET_PARAM.noseHeight) / (bot - top);
+      const pts = R.map(r => ({ y: (bot - r.py) * s, full: r.w * s, hull: Math.min(r.w, bodyHalf) * s })).reverse();
+      let noseY = (bot - R[noseRow].py) * s;
+      const y0 = pts[0].y;
+      pts.forEach(q => { q.y -= y0; });
+      noseY -= y0;
+      const H = pts[pts.length - 1].y;
+
+      // Parts of the outline wider than the body become fins
+      const fins = [];
+      let run = [];
+      const flush = () => {
+        if (run.length > 1) {
+          const a = run[0], b = run[run.length - 1];
+          fins.push([[a.hull * 0.85, a.y], ...run.map(q => [q.full, q.y]), [b.hull * 0.85, b.y]]);
+        }
+        run = [];
+      };
+      pts.forEach(q => { if (q.full > q.hull * 1.04 + 0.01) run.push(q); else flush(); });
+      flush();
+
+      ROCKET_PARAM.sketch = { pts, noseY, H, fins };
+
+      const D = 2 * bodyHalf * s;
+      const maxFull = Math.max(...pts.map(q => q.full));
+      const set = (id, v) => { document.getElementById(id).value = v; };
+      sketchApplying = true;
+      set('param-nose-shape', midR < 0.58 ? 'conical' : midR < 0.8 ? 'parabolic' : 'ogive');
+      set('param-nose-height', (H - noseY).toFixed(2));
+      set('param-body-length', noseY.toFixed(2));
+      set('param-body-diameter', D.toFixed(2));
+      set('param-fin-span', Math.max(0.05, maxFull - D / 2).toFixed(2));
+      if (!parseInt(document.getElementById('param-fin-count').value)) set('param-fin-count', '4');
+      updateDesignParameters();
+
+      autoSpin = false;          // show the side view so it lines up with the sketch
+      reset3DCameraFrame();
+    }
+
+    // ---- Read the controls and work out the physics ----
+    function updateDesignParameters() {
+      // Touching a slider by hand drops the sketch (the sketch sets sketchApplying itself)
+      if (!sketchApplying) ROCKET_PARAM.sketch = null;
+
+      const $ = (id) => document.getElementById(id);
+      const R = ROCKET_PARAM;
+
+      R.noseShape = $('param-nose-shape').value;
+      R.noseHeight = parseFloat($('param-nose-height').value);
+      R.noseRadius = parseFloat($('param-nose-radius').value);
+      R.noseColor = $('param-nose-color').value;
+
+      R.bodyStages = parseInt($('param-body-stages').value);
+      R.bodyLength = parseFloat($('param-body-length').value);
+      R.bodyDiameter = parseFloat($('param-body-diameter').value);
+      R.bodyWallThickness = parseFloat($('param-body-wall').value);
+      R.bodyColor = $('param-body-color').value;
+
+      R.finCount = parseInt($('param-fin-count').value);
+      R.finShape = $('param-fin-shape').value;
+      R.finSpan = parseFloat($('param-fin-span').value);
+      R.finSweep = parseInt($('param-fin-sweep').value);
+      R.finColor = $('param-fin-color').value;
+
+      R.engineFuel = $('param-engine-fuel').value;
+      R.engineCluster = parseInt($('param-engine-cluster').value);
+      R.engineThrust = parseFloat($('param-engine-thrust').value);
+      R.enginePropellant = parseFloat($('param-engine-propellant').value);
+      R.engineBellRadius = parseFloat($('param-engine-bell').value);
+
+      R.payloadMass = parseFloat($('param-payload-mass').value);
+      R.chuteDiameter = parseFloat($('param-chute-size').value);
+      R.chuteAltitude = parseFloat($('param-chute-alt').value);
+
+      // Labels
+      $('lbl-nose-shape').innerText = R.noseShape;
+      $('lbl-nose-height').innerText = `${R.noseHeight.toFixed(1)} m`;
+      $('lbl-nose-radius').innerText = `${R.noseRadius.toFixed(2)} m`;
+      $('lbl-body-stages').innerText = `${R.bodyStages} Stage(s)`;
+      $('lbl-body-length').innerText = `${R.bodyLength.toFixed(1)} m`;
+      $('lbl-body-diameter').innerText = `${R.bodyDiameter.toFixed(2)} m`;
+      $('lbl-body-wall').innerText = `${R.bodyWallThickness.toFixed(1)} mm`;
+      $('lbl-fin-count').innerText = `${R.finCount} Fins`;
+      $('lbl-fin-shape').innerText = R.finShape;
+      $('lbl-fin-span').innerText = `${R.finSpan.toFixed(2)} m`;
+      $('lbl-fin-sweep').innerText = `${R.finSweep}°`;
+      $('lbl-engine-fuel').innerText = R.engineFuel.toUpperCase();
+      $('lbl-engine-cluster').innerText = `${R.engineCluster} Nozzle(s)`;
+      $('lbl-engine-thrust').innerText = `${R.engineThrust} kN`;
+      $('lbl-engine-propellant').innerText = `${R.enginePropellant} kg`;
+      $('lbl-engine-bell').innerText = `${R.engineBellRadius.toFixed(2)} m`;
+      $('lbl-payload-mass').innerText = `${R.payloadMass} kg`;
+      $('lbl-chute-size').innerText = `${R.chuteDiameter.toFixed(1)} m`;
+      $('lbl-chute-alt').innerText = `${R.chuteAltitude} m`;
+
+      R.isp = R.engineFuel === 'lh2' ? 450 : R.engineFuel === 'ch4' ? 380 : 310;
+
+      // Mass model
+      const radius = R.bodyDiameter / 2, densityAluminum = 2700;
+      const wall = R.bodyWallThickness / 1000;
+      const hullVolume = 2 * Math.PI * radius * R.bodyLength * wall;
+      const noseVolume = Math.PI * radius * R.noseHeight * wall;
+      const finVolume = R.finCount * (0.5 * R.finSpan * (R.bodyLength * 0.2)) * 0.008;
+
+      R.dryMass = Math.round((hullVolume + noseVolume + finVolume) * densityAluminum + R.payloadMass + 80);
+      R.wetMass = R.dryMass + R.enginePropellant;
+      R.frontalArea = Math.PI * radius * radius;
+
+      const noseCd = R.noseShape === 'ogive' ? 0.12 : R.noseShape === 'conical' ? 0.18 : 0.15;
+      const finDrag = R.finCount * 0.02 * (R.finSpan / R.bodyDiameter);
+      R.baseCd = noseCd + finDrag;
+
+      // Stability
+      R.com = (
+        (R.noseHeight * 0.5 * (noseVolume * densityAluminum)) +
+        ((R.noseHeight + R.bodyLength * 0.5) * (hullVolume * densityAluminum)) +
+        ((R.noseHeight + R.bodyLength * 0.8) * R.enginePropellant)
+      ) / R.wetMass;
+      R.cop = R.noseHeight + R.bodyLength * 0.75;
+      R.stabilityMargin = (R.cop - R.com) / R.bodyDiameter;
+
+      const twr = (R.engineThrust * 1000 * R.engineCluster) / (R.wetMass * 9.81);
+
+      $('dyn-dry-mass').innerText = `${R.dryMass} kg`;
+      $('dyn-wet-mass').innerText = `${R.wetMass} kg`;
+      $('dyn-area').innerText = `${R.frontalArea.toFixed(3)} m²`;
+      $('dyn-cd').innerText = R.baseCd.toFixed(2);
+      $('dyn-twr').innerText = twr.toFixed(2);
+      $('dyn-com').innerText = `${R.com.toFixed(2)} m`;
+      $('dyn-cop').innerText = `${R.cop.toFixed(2)} m`;
+
+      const marginEl = $('dyn-margin');
+      marginEl.innerText = `${R.stabilityMargin.toFixed(2)} Cal`;
+      marginEl.className = R.stabilityMargin < 0.3 ? 'text-red-600 font-bold'
+                         : R.stabilityMargin > 3.5 ? 'text-amber-600 font-bold'
+                         : 'text-emerald-700 font-bold';
+
+      rebuild3DRocket();
+      designReview();
+      sketchApplying = false;
+    }
+
+    // ---- Flight physics (fixed 20 ms steps, so every speed gives the same flight) ----
+    const PHYS_DT = 0.02;
+    let simSpeed = 2.5, simPaused = false, simAccum = 0;
+    let simActive = false;
+    let simState = { t: 0, y: 0, v: 0, a: 0, m: 0, fuel: 0, phase: 'PAD', maxAlt: 0, maxVel: 0, maxQ: 0, last: [0, 0, 0, 1.225] };
+    let audioCtx = null;
+
+    function playRocketAudio(type) {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        if (type === 'launch') {
+          const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(60, audioCtx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(180, audioCtx.currentTime + 3);
+          gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 3.5);
+          osc.connect(gain); gain.connect(audioCtx.destination);
+          osc.start(); osc.stop(audioCtx.currentTime + 3.5);
+        }
+      } catch (e) { /* sound is optional */ }
+    }
+
+    function setSimSpeed(s) {
+      simSpeed = s;
+      document.querySelectorAll('[data-speed]').forEach(b => b.classList.toggle('sketch-btn-accent', +b.dataset.speed === s));
+    }
+
+    function togglePause() {
+      simPaused = !simPaused;
+      document.getElementById('btn-pause').innerText = simPaused ? 'Resume' : 'Pause';
+    }
+
+    function launchMission() {
+      const totalThrustN = ROCKET_PARAM.engineThrust * 1000 * ROCKET_PARAM.engineCluster;
+      if (totalThrustN <= ROCKET_PARAM.wetMass * 9.81) {
+        alert("Thrust-to-weight is below 1, so this rocket can't lift off. Add thrust, or cut propellant or payload.");
+        return;
+      }
+      simState = { t: 0, y: 0, v: 0, a: 0, m: ROCKET_PARAM.wetMass, fuel: ROCKET_PARAM.enginePropellant,
+                   phase: 'POWERED', maxAlt: 0, maxVel: 0, maxQ: 0, last: [0, 0, 0, 1.225] };
+      simAccum = 0;
+      simPaused = false;
+      document.getElementById('btn-pause').innerText = 'Pause';
+      graphData = { t: [], alt: [], vel: [] };
+      simActive = true;
+      playRocketAudio('launch');
+
+      document.getElementById('btn-launch').disabled = true;
+      const pill = document.getElementById('sim-status-pill');
+      pill.innerText = 'In flight';
+      pill.className = 'text-xs bg-sky-200 text-sky-900 border border-sky-400 px-3 py-1 rounded-full font-bold';
+    }
+
+    function abortMission() {
+      simActive = false;
+      simPaused = false;
+      document.getElementById('btn-pause').innerText = 'Pause';
+      simState = { t: 0, y: 0, v: 0, a: 0, m: ROCKET_PARAM.wetMass, fuel: 0, phase: 'PAD', maxAlt: 0, maxVel: 0, maxQ: 0, last: [0, 0, 0, 1.225] };
+      document.getElementById('btn-launch').disabled = false;
+      const pill = document.getElementById('sim-status-pill');
+      pill.innerText = 'On the pad';
+      pill.className = 'text-xs bg-emerald-100 text-emerald-800 border border-emerald-300 px-3 py-1 rounded-full font-bold';
+      updateTelemetryUI(0, 0, 0, 1.225);
+    }
+
+    // One Euler step
+    function stepPhysics(dt) {
+      if (!simActive) return;
+      const g0 = 9.81, rEarth = 6371000;
+      const g = g0 * Math.pow(rEarth / (rEarth + simState.y), 2);
+      const rho = simState.y > 85000 ? 0 : 1.225 * Math.exp(-simState.y / 8500);
+
+      const totalThrustN = ROCKET_PARAM.engineThrust * 1000 * ROCKET_PARAM.engineCluster;
+      const mdot = totalThrustN / (ROCKET_PARAM.isp * g0);
+
+      let currentThrust = 0;
+      if (simState.fuel > 0 && simState.phase === 'POWERED') {
+        currentThrust = totalThrustN;
+        simState.fuel = Math.max(0, simState.fuel - mdot * dt);
+        simState.m = ROCKET_PARAM.dryMass + simState.fuel;
+      } else if (simState.phase === 'POWERED') {
+        simState.phase = 'COASTING';
+      }
+
+      let currentCd = ROCKET_PARAM.baseCd;
+      if (simState.phase === 'PARACHUTE') {
+        currentCd += 1.3 * (Math.pow(ROCKET_PARAM.chuteDiameter, 2) / ROCKET_PARAM.frontalArea);
+      }
+      const dragForce = 0.5 * rho * simState.v * simState.v * currentCd * ROCKET_PARAM.frontalArea * (simState.v >= 0 ? 1 : -1);
+      const netForce = currentThrust - simState.m * g - dragForce;
+
+      simState.a = netForce / simState.m;
+      simState.v += simState.a * dt;
+      simState.y += simState.v * dt;
+      simState.t += dt;
+
+      if (simState.v < 0 && simState.phase === 'COASTING') {
+        if (simState.y <= ROCKET_PARAM.chuteAltitude) simState.phase = 'PARACHUTE';
+      } else if (simState.phase === 'PARACHUTE' && simState.y > ROCKET_PARAM.chuteAltitude) {
+        simState.phase = 'COASTING';
+      }
+
+      if (simState.y > simState.maxAlt) simState.maxAlt = simState.y;
+      if (Math.abs(simState.v) > simState.maxVel) simState.maxVel = Math.abs(simState.v);
+      const dynamicPressure = 0.5 * rho * simState.v * simState.v / 1000;
+      if (dynamicPressure > simState.maxQ) simState.maxQ = dynamicPressure;
+
+      simState.last = [dynamicPressure, dragForce / 1000, currentThrust / 1000, rho];
+
+      if (simState.y <= 0 && simState.t > 1) {
+        simState.y = 0;
+        simActive = false;
+        simState.phase = Math.abs(simState.v) >= 8.0 ? 'CRASHED' : 'LANDED';
+        triggerRecapModal();
+      }
+    }
+
+    function updateTelemetryUI(q, dragKn, thrustKn, rho) {
+      const $ = (id) => document.getElementById(id);
+      $('tele-alt').innerText = simState.y >= 10000 ? `${(simState.y / 1000).toFixed(2)} km` : `${Math.round(simState.y)} m`;
+      $('tele-vel').innerText = `${Math.round(simState.v)} m/s`;
+      $('tele-mach').innerText = (Math.abs(simState.v) / 340).toFixed(2);
+      $('tele-maxq').innerText = `${Math.round(q)} kPa`;
+      $('tele-time').innerText = `${simState.t.toFixed(1)} s`;
+      $('tele-phase').innerText = simState.phase;
+      $('tele-thrust').innerText = `${thrustKn.toFixed(1)} kN`;
+      $('tele-drag').innerText = `${dragKn.toFixed(1)} kN`;
+      $('tele-mass').innerText = `${Math.round(simState.m)} kg`;
+      $('tele-density').innerText = `${rho.toFixed(3)} kg/m³`;
+      recordGraphData(simState.t, simState.y, simState.v);
+    }
+
+    // Each frame, add up the (sped-up) time and run that many fixed steps
+    let lastTick = performance.now();
+    function gameLoop() {
+      requestAnimationFrame(gameLoop);
+      const now = performance.now();
+      const frame = Math.min(0.1, (now - lastTick) / 1000);
+      lastTick = now;
+      if (!simActive || simPaused) return;
+
+      simAccum += frame * simSpeed;
+      let n = 0;
+      while (simAccum >= PHYS_DT && simActive && n++ < 5000) {
+        stepPhysics(PHYS_DT);
+        simAccum -= PHYS_DT;
+      }
+      updateTelemetryUI(...simState.last);
+    }
+
+    // ---- Headless sim, auto-tune and design review ----
+    // Same physics and step size as the live flight, just without drawing anything
+    function simulateHeadless(p) {
+      const g0 = 9.81, Re = 6371000, A = ROCKET_PARAM.frontalArea, dry = ROCKET_PARAM.dryMass;
+      const mdot = p.thrust / (ROCKET_PARAM.isp * g0);
+      let t = 0, y = 0, v = 0, fuel = p.prop, phase = 'POWERED', maxAlt = 0;
+      while (t < 1500) {
+        const g = g0 * Math.pow(Re / (Re + y), 2);
+        const rho = y > 85000 ? 0 : 1.225 * Math.exp(-y / 8500);
+        let F = 0, m = dry + fuel;
+        if (phase === 'POWERED') {
+          if (fuel > 0) { F = p.thrust; fuel = Math.max(0, fuel - mdot * PHYS_DT); m = dry + fuel; }
+          else phase = 'COASTING';
+        }
+        let cd = ROCKET_PARAM.baseCd;
+        if (phase === 'PARACHUTE') cd += 1.3 * p.chute * p.chute / A;
+        const drag = 0.5 * rho * v * v * cd * A * (v >= 0 ? 1 : -1);
+        v += ((F - m * g - drag) / m) * PHYS_DT;
+        y += v * PHYS_DT;
+        t += PHYS_DT;
+        if (y > maxAlt) maxAlt = y;
+        if (v < 0 && phase === 'COASTING' && y <= p.chuteAlt) phase = 'PARACHUTE';
+        else if (phase === 'PARACHUTE' && y > p.chuteAlt) phase = 'COASTING';
+        if (y <= 0 && t > 1) return { maxAlt, impact: Math.abs(v) };
+      }
+      return { maxAlt, impact: 999 };
+    }
+
+    function currentCandidate() {
+      const R = ROCKET_PARAM;
+      return { thrust: R.engineThrust * 1000 * R.engineCluster, prop: R.enginePropellant, chute: R.chuteDiameter, chuteAlt: R.chuteAltitude };
+    }
+
+    // Random hill-climb over thrust, propellant and parachute settings
+    function autoTune() {
+      const R = ROCKET_PARAM;
+      const target = +document.getElementById('param-target').value;
+      const snap = (v, a, b, s) => Math.round(Math.min(b, Math.max(a, v)) / s) * s;
+
+      const score = (c) => {
+        if (c.thrust < (R.dryMass + c.prop) * 9.81 * 1.15) return -10;   // too heavy to lift off
+        const r = simulateHeadless(c);
+        return -Math.abs(r.maxAlt - target) / target - (r.impact > 7 ? 2 + r.impact / 50 : 0);
+      };
+
+      let best = currentCandidate(), bestScore = score(best);
+      const jitter = () => 1 + (Math.random() - 0.5) * 0.4;
+      for (let i = 0; i < 250; i++) {
+        const c = {
+          thrust: snap(best.thrust * jitter() / R.engineCluster / 1000, 20, 800, 10) * 1000 * R.engineCluster,
+          prop: snap(best.prop * jitter(), 300, 15000, 100),
+          chute: snap(best.chute * jitter(), 2, 20, 0.5),
+          chuteAlt: snap(best.chuteAlt * jitter(), 200, 5000, 100)
+        };
+        const s = score(c);
+        if (s > bestScore) { best = c; bestScore = s; }
+      }
+
+      const set = (id, v) => { document.getElementById(id).value = v; };
+      set('param-engine-thrust', best.thrust / 1000 / R.engineCluster);
+      set('param-engine-propellant', best.prop);
+      set('param-chute-size', best.chute);
+      set('param-chute-alt', best.chuteAlt);
+      updateDesignParameters();
+    }
+
+    function designReview() {
+      const el = document.getElementById('ai-review');
+      if (!el) return;
+      const R = ROCKET_PARAM, tips = [];
+      const twr = R.engineThrust * 1000 * R.engineCluster / (R.wetMass * 9.81);
+
+      if (R.stabilityMargin < 1) tips.push('Unstable (under 1 caliber): make the fins bigger or move weight forward.');
+      else if (R.stabilityMargin > 3.5) tips.push('Very stable (over 3.5 calibers). It will turn into the wind, so you could trim the fins.');
+      if (twr < 1.2) tips.push(`Thrust-to-weight is only ${twr.toFixed(2)}. Add thrust or cut propellant.`);
+      if (twr < 1) { el.innerHTML = tips.join('<br>'); return; }
+
+      const r = simulateHeadless(currentCandidate());
+      const target = +document.getElementById('param-target').value;
+      tips.push(`Predicted apogee: ${(r.maxAlt / 1000).toFixed(1)} km (target ${target / 1000} km)`);
+      tips.push(r.impact > 7
+        ? `Predicted landing speed is ${r.impact.toFixed(1)} m/s. Try a bigger parachute or an earlier deploy.`
+        : `Predicted landing speed: ${r.impact.toFixed(1)} m/s (safe)`);
+      el.innerHTML = tips.join('<br>');
+    }
+
+    // ---- Graph and flight view ----
+    let graphData = { t: [], alt: [], vel: [] };
+
+    function recordGraphData(t, alt, vel) {
+      if (!simActive) return;
+      if (graphData.t.length === 0 || t - graphData.t[graphData.t.length - 1] > 0.4) {
+        graphData.t.push(t); graphData.alt.push(alt); graphData.vel.push(vel);
+        if (graphData.t.length > 600) { graphData.t.shift(); graphData.alt.shift(); graphData.vel.shift(); }
+        renderGraphCanvas();
+      }
+    }
+
+    function renderGraphCanvas() {
+      const gCanvas = document.getElementById('graph-canvas');
+      if (!gCanvas) return;
+      const ctx = gCanvas.getContext('2d');
+      const w = gCanvas.width = gCanvas.clientWidth;
+      const h = gCanvas.height = gCanvas.clientHeight;
+
+      ctx.fillStyle = '#020617';
+      ctx.fillRect(0, 0, w, h);
+      if (graphData.t.length < 2) return;
+
+      const maxA = Math.max(...graphData.alt, 100);
+      const maxV = Math.max(...graphData.vel.map(Math.abs), 50);
+      const plot = (series, max, color, width, dash) => {
+        ctx.strokeStyle = color; ctx.lineWidth = width; ctx.setLineDash(dash);
+        ctx.beginPath();
+        series.forEach((val, i) => {
+          const x = (i / (series.length - 1)) * w;
+          const y = h - (Math.abs(val) / max) * (h - 15) - 5;
+          i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+        });
+        ctx.stroke(); ctx.setLineDash([]);
+      };
+      plot(graphData.alt, maxA, '#38bdf8', 3, []);
+      plot(graphData.vel, maxV, '#7dd3fc', 2, [4, 4]);
+    }
+
+    let simCanvas, simCtx;
+
+    function initSimCanvas() {
+      const canvas = document.getElementById('sim-canvas');
+      if (!canvas) return;
+      const resize = () => { canvas.width = canvas.parentElement.clientWidth; canvas.height = canvas.parentElement.clientHeight; };
+
+      // Already set up, so just resize (otherwise every tab switch starts another loop)
+      if (simCanvas) { resize(); return; }
+
+      simCanvas = canvas;
+      simCtx = canvas.getContext('2d');
+      resize();
+      window.addEventListener('resize', resize);
+
+      (function renderSimScene() {
+        requestAnimationFrame(renderSimScene);
+        const w = simCanvas.width, h = simCanvas.height, alt = simState.y;
+
+        // Sky color by altitude
+        const sky = simCtx.createLinearGradient(0, 0, 0, h);
+        if (alt < 10000)      { sky.addColorStop(0, '#7dd3fc'); sky.addColorStop(1, '#bae6fd'); }
+        else if (alt < 35000) { sky.addColorStop(0, '#1e3a8a'); sky.addColorStop(1, '#38bdf8'); }
+        else if (alt < 70000) { sky.addColorStop(0, '#311b92'); sky.addColorStop(1, '#1e3a8a'); }
+        else                  { sky.addColorStop(0, '#020617'); sky.addColorStop(1, '#1e1b4b'); }
+        simCtx.fillStyle = sky;
+        simCtx.fillRect(0, 0, w, h);
+
+        if (alt > 25000) {
+          simCtx.fillStyle = '#ffffff';
+          for (let i = 0; i < 30; i++) simCtx.fillRect((i * 37) % w, (i * 53) % (h * 0.7), 2, 2);
+        }
+
+        // Ground and pad
+        const groundY = h - 40 + alt * 0.1;
+        if (groundY < h + 100) {
+          simCtx.fillStyle = '#86efac';
+          simCtx.fillRect(0, groundY, w, h);
+          simCtx.fillStyle = '#475569';
+          simCtx.fillRect(w / 2 - 30, groundY - 15, 60, 15);
+        }
+
+        const rx = w / 2;
+        const ry = Math.max(h * 0.25, h - 80 - alt * 0.08);
+        simCtx.save();
+        simCtx.translate(rx, ry);
+
+        if (simState.phase === 'PARACHUTE') {
+          simCtx.fillStyle = '#f43f5e';
+          simCtx.beginPath(); simCtx.arc(0, -60, 25, Math.PI, 0); simCtx.fill();
+          simCtx.strokeStyle = '#ffffff'; simCtx.lineWidth = 1.5;
+          simCtx.beginPath();
+          simCtx.moveTo(-25, -60); simCtx.lineTo(-5, -25);
+          simCtx.moveTo(25, -60); simCtx.lineTo(5, -25);
+          simCtx.stroke();
+        }
+
+        const SK = ROCKET_PARAM.sketch;
+        if (SK) {
+          // Draw the full outline in the fin color, then the body and nose over it
+          const k = 75 / SK.H, X = (v) => v * k, Y = (y) => 25 - y * k;
+          const mirror = (key, from, to, color) => {
+            const seg = SK.pts.filter(q => q.y >= from - 1e-6 && q.y <= to + 1e-6);
+            if (seg.length < 2) return;
+            simCtx.fillStyle = color;
+            simCtx.beginPath();
+            seg.forEach((q, i) => i ? simCtx.lineTo(-X(q[key]), Y(q.y)) : simCtx.moveTo(-X(q[key]), Y(q.y)));
+            for (let i = seg.length - 1; i >= 0; i--) simCtx.lineTo(X(seg[i][key]), Y(seg[i].y));
+            simCtx.closePath();
+            simCtx.fill();
+          };
+          mirror('full', 0, SK.noseY, ROCKET_PARAM.finColor);
+          mirror('hull', 0, SK.noseY, ROCKET_PARAM.bodyColor);
+          mirror('hull', SK.noseY, SK.H, ROCKET_PARAM.noseColor);
+        } else {
+          simCtx.fillStyle = ROCKET_PARAM.bodyColor;
+          simCtx.fillRect(-12, -25, 24, 50);
+          simCtx.fillStyle = ROCKET_PARAM.noseColor;
+          simCtx.beginPath();
+          simCtx.moveTo(-12, -25); simCtx.lineTo(0, -50); simCtx.lineTo(12, -25);
+          simCtx.closePath(); simCtx.fill();
+        }
+
+        if (!SK) {
+          simCtx.fillStyle = ROCKET_PARAM.finColor;
+          simCtx.fillRect(-22, 10, 10, 15);
+          simCtx.fillRect(12, 10, 10, 15);
+        }
+
+        if (simState.phase === 'POWERED') {
+          simCtx.fillStyle = '#f97316';
+          simCtx.beginPath();
+          simCtx.moveTo(-8, 25); simCtx.lineTo(0, 45 + Math.random() * 40); simCtx.lineTo(8, 25);
+          simCtx.closePath(); simCtx.fill();
+        }
+        simCtx.restore();
+      })();
+    }
+
+    // ---- Report, tabs and startup ----
+    function triggerRecapModal() {
+      const $ = (id) => document.getElementById(id);
+      const badge = $('recap-badge'), analysis = $('recap-analysis');
+      const impact = Math.abs(Math.round(simState.v));
+
+      $('recap-apogee').innerText = simState.maxAlt >= 10000 ? `${(simState.maxAlt / 1000).toFixed(2)} km` : `${Math.round(simState.maxAlt)} m`;
+      $('recap-maxvel').innerText = `${Math.round(simState.maxVel)} m/s`;
+      $('recap-q').innerText = `${Math.round(simState.maxQ)} kPa`;
+      $('recap-impact').innerText = `${impact} m/s`;
+
+      const tgt = +$('param-target').value;
+      let pts = Math.max(0, Math.round(100 * (1 - Math.abs(simState.maxAlt - tgt) / tgt)));
+      if (simState.phase === 'CRASHED') pts = Math.round(pts / 2);
+
+      if (simState.phase === 'CRASHED') {
+        badge.innerText = 'Crashed';
+        badge.className = 'p-3 rounded-lg text-center font-bold text-base bg-red-100 text-red-900 border-2 border-red-400';
+        analysis.innerText = `It hit the ground at ${impact} m/s, and anything over 8 m/s breaks it. Try a bigger parachute or deploy it higher up.`;
+      } else {
+        badge.innerText = 'Landed safely';
+        badge.className = 'p-3 rounded-lg text-center font-bold text-base bg-emerald-100 text-emerald-900 border-2 border-emerald-400';
+        analysis.innerText = `Landed at ${impact} m/s. Peak altitude was ${(simState.maxAlt / 1000).toFixed(2)} km and max Q was ${Math.round(simState.maxQ)} kPa.`;
+      }
+      analysis.innerText += ` Score: ${pts}/100 (target ${tgt / 1000} km).`;
+      $('modal-recap').classList.remove('hidden');
+    }
+
+    function closeRecapModal(switchToStudio) {
+      document.getElementById('modal-recap').classList.add('hidden');
+      abortMission();
+      if (switchToStudio) switchMainTab('studio');
+    }
+
+    function switchPartSubTab(group) {
+      ['nose', 'body', 'fins', 'engine', 'payload'].forEach(g => {
+        const el = document.getElementById(`part-group-${g}`), btn = document.getElementById(`subtab-${g}`);
+        el.classList.toggle('hidden', g !== group);
+        btn.className = g === group ? 'px-3 py-1.5 rounded-lg bg-sky-300 text-sky-950' : 'px-3 py-1.5 rounded-lg bg-sky-100 text-sky-700';
+      });
+    }
+
+    function switchMainTab(tab) {
+      const studio = tab === 'studio';
+      document.getElementById('view-studio').classList.toggle('hidden', !studio);
+      document.getElementById('view-sim').classList.toggle('hidden', studio);
+      document.getElementById('nav-tab-studio').classList.toggle('sketch-btn-accent', studio);
+      document.getElementById('nav-tab-sim').classList.toggle('sketch-btn-accent', !studio);
+      if (!studio) setTimeout(() => { initSimCanvas(); renderGraphCanvas(); }, 50);
+    }
+
+    window.onload = function () {
+      // Wider slider ranges and finer steps so the sketch can set exact sizes
+      const rng = (id, min, max, step) => { const e = document.getElementById(id); e.min = min; e.max = max; e.step = step; };
+      rng('param-nose-height', 0.2, 12, 0.01);
+      rng('param-body-length', 0.5, 40, 0.01);
+      rng('param-body-diameter', 0.2, 8, 0.01);
+      rng('param-fin-span', 0.05, 6, 0.01);
+      updateDesignParameters();
+      init3DViewport();
+      initSketchCanvas();
+      reset3DCameraFrame();
+      document.querySelectorAll('[data-speed]').forEach(b => { b.onclick = () => setSimSpeed(+b.dataset.speed); });
+      window.addEventListener('resize', () => {
+        const c = document.getElementById('viewport-3d-container');
+        if (c && renderer3D) {
+          renderer3D.setSize(c.clientWidth, c.clientHeight);
+          camera3D.aspect = c.clientWidth / c.clientHeight;
+          camera3D.updateProjectionMatrix();
+        }
+      });
+      gameLoop();
+    };
+  </script>
+</body>
+</html>
