@@ -36,27 +36,28 @@ For the best result, draw a closed, left-right symmetric outline. Use the Spin b
 
 ## backend.py (OpenCV prototype)
 
-`backend.py` is a small Python script that tries the same idea with OpenCV. It isn't connected to the web app. `aerocraft.html` runs entirely in the browser and never calls it, so the 3D model and the simulation don't depend on it.
+`backend.py` is a small Python script that does the same sketch analysis with OpenCV. It isn't connected to the web app. `aerocraft.html` runs entirely in the browser and never calls it, so the 3D model and the simulation don't depend on it.
 
-What it does with a sketch image (a NumPy array):
+What it does with a sketch image:
 
-1. Blurs the image with a 5x5 Gaussian to smooth the lines.
-2. Runs Canny edge detection (thresholds 50 and 150).
-3. Finds the external contours and picks the one with the largest area.
-4. Takes that contour's bounding box and returns its height and width in pixels, the height-to-width aspect ratio, a rough mass estimate (`height_px * 4.5` kg) and a rough drag coefficient (`0.2 + (width / height) * 0.5`).
+1. Blurs the image and runs Canny edge detection.
+2. Takes the largest outside contour and fills it in to get a solid silhouette. This works for both filled shapes and thin outlines.
+3. Measures the width of the silhouette at every row, then splits it up the same way the browser version does: body width from the middle of the drawing, nose end where the width reaches about 90% of the body, nose shape from how curved the nose is, and fins from rows wider than the body.
+4. Converts the pixel measurements to the app's slider values (nose height, body length, body diameter, fin span, nose shape) using one scale for both axes, plus a rough drag coefficient from the same formula the app uses.
 
-If it finds no contours, it returns `{"status": "No valid geometry detected"}`.
-
-The mass and drag numbers are quick placeholder formulas, not physical models. The script also doesn't split the outline into nose, body and engines yet. It only measures the overall bounding box. The browser version goes further: it reads the width at every height and builds the hull and fins from that.
+If it finds nothing, it returns `{"status": "No valid geometry detected"}`.
 
 To try it:
 
 ```
 pip install opencv-python numpy
-python backend.py
+python backend.py              # runs a built-in pencil-rocket test sketch
+python backend.py sketch.png   # analyzes your own image
 ```
 
-Running it directly draws a filled rectangle on a blank 512x512 canvas and prints the contour count and the features it extracted.
+Dark lines on a light background (like a scan or photo of paper) are flipped automatically. PNGs with transparency are treated as a mask.
+
+It prints the measurements in pixels and the converted rocket parameters. The outline thickness isn't compensated for the way the browser version does, so results can be a pixel or two wider.
 
 ## The physics
 
@@ -101,5 +102,5 @@ Plain HTML, CSS and JavaScript for the app, [Tailwind CSS](https://tailwindcss.c
 ## Files
 
 - `aerocraft.html`: the whole app
-- `backend.py`: standalone OpenCV sketch-analysis prototype (not used by the app)
+- `backend.py`: standalone OpenCV version of the sketch analysis (not used by the app)
 - `README.md`: this file
