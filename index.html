@@ -599,6 +599,7 @@
     function clearSketchCanvas() {
       if (!sketchCtx) return;
       sketchCtx.clearRect(0, 0, sketchCanvas.width, sketchCanvas.height);
+      ROCKET_PARAM.sketch = null;
       updateDesignParameters();   // also clears the sketch outline
     }
 
@@ -697,6 +698,8 @@
       set('param-fin-span', Math.max(0.05, maxFull - D / 2).toFixed(2));
       if (!parseInt(document.getElementById('param-fin-count').value)) set('param-fin-count', '4');
       updateDesignParameters();
+      const Rk = ROCKET_PARAM;
+      Rk.sketch.vals = { shape: Rk.noseShape, nose: Rk.noseHeight, body: Rk.bodyLength, diameter: Rk.bodyDiameter, finSpan: Rk.finSpan };
 
       autoSpin = false;          // show the side view so it lines up with the sketch
       reset3DCameraFrame();
@@ -704,9 +707,6 @@
 
     // ---- Read the controls and work out the physics ----
     function updateDesignParameters() {
-      // Touching a slider by hand drops the sketch (the sketch sets sketchApplying itself)
-      if (!sketchApplying) ROCKET_PARAM.sketch = null;
-
       const $ = (id) => document.getElementById(id);
       const R = ROCKET_PARAM;
 
@@ -732,6 +732,15 @@
       R.engineThrust = parseFloat($('param-engine-thrust').value);
       R.enginePropellant = parseFloat($('param-engine-propellant').value);
       R.engineBellRadius = parseFloat($('param-engine-bell').value);
+
+      // Changing the nose, body or fin span by hand drops the sketch. Colors, engines,
+      // payload, parachute, target and Auto-Tune keep it.
+      const v = R.sketch && R.sketch.vals;
+      if (v && !sketchApplying && (R.noseShape !== v.shape || Math.abs(R.noseHeight - v.nose) > 0.005 ||
+          Math.abs(R.bodyLength - v.body) > 0.005 || Math.abs(R.bodyDiameter - v.diameter) > 0.005 ||
+          Math.abs(R.finSpan - v.finSpan) > 0.005)) {
+        R.sketch = null;
+      }
 
       R.payloadMass = parseFloat($('param-payload-mass').value);
       R.chuteDiameter = parseFloat($('param-chute-size').value);
@@ -963,7 +972,7 @@
       const g0 = 9.81, Re = 6371000, A = ROCKET_PARAM.frontalArea, dry = ROCKET_PARAM.dryMass;
       const mdot = p.thrust / (ROCKET_PARAM.isp * g0);
       let t = 0, y = 0, v = 0, fuel = p.prop, phase = 'POWERED', maxAlt = 0;
-      while (t < 1500) {
+      while (t < 40000) {   // long enough for very high flights to come back down
         const g = g0 * Math.pow(Re / (Re + y), 2);
         const rho = y > 85000 ? 0 : 1.225 * Math.exp(-y / 8500);
         let F = 0, m = dry + fuel;
@@ -1007,7 +1016,7 @@
       for (let i = 0; i < 250; i++) {
         const c = {
           thrust: snap(best.thrust * jitter() / R.engineCluster / 1000, 20, 800, 10) * 1000 * R.engineCluster,
-          prop: snap(best.prop * jitter(), 300, 15000, 100),
+          prop: snap(best.prop * jitter(), 20, 15000, 10),
           chute: snap(best.chute * jitter(), 2, 20, 0.5),
           chuteAlt: snap(best.chuteAlt * jitter(), 200, 5000, 100)
         };
@@ -1239,6 +1248,7 @@
       rng('param-body-length', 0.5, 40, 0.01);
       rng('param-body-diameter', 0.2, 8, 0.01);
       rng('param-fin-span', 0.05, 6, 0.01);
+      rng('param-engine-propellant', 20, 15000, 10);   // low enough for a 3 km flight
       updateDesignParameters();
       init3DViewport();
       initSketchCanvas();
