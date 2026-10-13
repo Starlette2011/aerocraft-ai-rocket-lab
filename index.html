@@ -11,44 +11,63 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
   <style>
+    :root { --s50: hsl(200 90% 97%); --s100: hsl(200 90% 93%); --s200: hsl(200 90% 86%); --s300: hsl(200 90% 76%); --s400: hsl(200 90% 62%); --s500: hsl(200 90% 50%); --s600: hsl(200 90% 42%); --s700: hsl(200 90% 35%); --s800: hsl(200 90% 27%); --s900: hsl(200 90% 20%); --s950: hsl(200 90% 12%); }
+    body { transition: background-color .6s; }
     * { font-family: 'Architects Daughter', cursive, sans-serif !important; box-sizing: border-box; }
     body {
-      background-color: #f0f9ff; color: #0f172a;
-      background-image: radial-gradient(#bae6fd 1.2px, transparent 1.2px);
+      background-color: var(--s50); color: #0f172a;
+      background-image: radial-gradient(var(--s200) 1.2px, transparent 1.2px);
       background-size: 20px 20px; min-height: 100vh;
     }
     .sketch-card {
-      background: #ffffff; border: 3px solid #0284c7; box-shadow: 5px 5px 0px #7dd3fc;
+      background: #ffffff; border: 3px solid var(--s600); box-shadow: 5px 5px 0px var(--s300);
       border-radius: 14px; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .sketch-btn {
-      background: #7dd3fc; color: #0369a1; border: 3px solid #0284c7; box-shadow: 3px 3px 0px #0284c7;
+      background: var(--s300); color: var(--s700); border: 3px solid var(--s600); box-shadow: 3px 3px 0px var(--s600);
       font-weight: 800; border-radius: 10px; cursor: pointer; transition: all 0.15s ease;
       display: inline-flex; align-items: center; justify-content: center; gap: 6px;
     }
-    .sketch-btn:hover { background: #38bdf8; transform: translate(-2px, -2px); box-shadow: 5px 5px 0px #0284c7; }
-    .sketch-btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0px #0284c7; }
-    .sketch-btn-accent { background: #0284c7; color: #ffffff; border: 3px solid #0f172a; box-shadow: 3px 3px 0px #0f172a; }
-    .sketch-btn-accent:hover { background: #0369a1; box-shadow: 5px 5px 0px #0f172a; }
+    .sketch-btn:hover { background: var(--s400); transform: translate(-2px, -2px); box-shadow: 5px 5px 0px var(--s600); }
+    .sketch-btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0px var(--s600); }
+    .sketch-btn-accent { background: var(--s600); color: #ffffff; border: 3px solid #0f172a; box-shadow: 3px 3px 0px #0f172a; }
+    .sketch-btn-accent:hover { background: var(--s700); box-shadow: 5px 5px 0px #0f172a; }
     .sketch-btn-danger { background: #fecdd3; color: #9f1239; border: 3px solid #9f1239; box-shadow: 3px 3px 0px #9f1239; }
     .sketch-btn-danger:hover { background: #fda4af; box-shadow: 5px 5px 0px #9f1239; }
-    input[type=range] { accent-color: #0284c7; cursor: pointer; }
+    input[type=range] { accent-color: var(--s600); cursor: pointer; }
     ::-webkit-scrollbar { width: 8px; height: 8px; }
-    ::-webkit-scrollbar-track { background: #e0f2fe; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb { background: #0284c7; border-radius: 4px; }
+    ::-webkit-scrollbar-track { background: var(--s100); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb { background: var(--s600); border-radius: 4px; }
     .canvas-container { position: relative; touch-action: none; }
   </style>
 </head>
 <body class="p-3 sm:p-5 flex flex-col min-h-screen">
 
   <!-- Header -->
-  <header class="sketch-card p-4 mb-4 flex flex-col md:flex-row justify-between items-center gap-4">
+  <header class="sketch-card p-4 mb-4 flex flex-col md:flex-row flex-wrap justify-between items-center gap-4">
     <div class="flex items-center gap-3">
       <div class="w-12 h-12 rounded-xl bg-sky-300 border-3 border-sky-700 flex items-center justify-center text-2xl shadow-sm"></div>
       <div>
         <h1 class="text-2xl sm:text-3xl font-extrabold text-sky-950 tracking-wide leading-tight">AeroCraft AI - Rocket Lab</h1>
         <p class="text-xs sm:text-sm text-sky-700 font-bold">Draw a rocket, see it in 3D, then fly it</p>
       </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <div>
+        <div class="text-xs font-bold text-sky-700">Destination</div>
+        <select id="planet-select" onchange="setPlanet(this.value)" class="sketch-btn px-3 py-2 text-sm">
+          <option value="earth">Earth</option>
+          <option value="moon">The Moon</option>
+          <option value="mars">Mars</option>
+          <option value="venus">Venus</option>
+          <option value="titan">Titan</option>
+        </select>
+      </div>
+      <div id="planet-info" class="text-xs font-bold text-sky-700 leading-snug"></div>
+    </div>
+    <div class="flex gap-2">
+      <button id="btn-demo" onclick="runDemo()" class="sketch-btn sketch-btn-accent px-3 py-2 text-sm">Autopilot Demo</button>
+      <button onclick="shareLink()" class="sketch-btn px-3 py-2 text-sm">Share Link</button>
     </div>
     <div class="flex gap-3">
       <button id="nav-tab-studio" onclick="switchMainTab('studio')" class="sketch-btn sketch-btn-accent px-5 py-2.5 text-base">1. Rocket Studio</button>
@@ -207,6 +226,11 @@
           <input type="range" id="param-chute-alt" min="200" max="5000" step="100" value="1200" oninput="updateDesignParameters()" class="w-full">
         </div>
 
+        <div class="space-y-1">
+          <label class="text-xs font-bold text-sky-900 flex justify-between"><span>Landing Fuel Reserve (kg):</span><span id="lbl-land-reserve" class="text-sky-600">0 kg</span></label>
+          <input type="range" id="param-land-reserve" min="0" max="15000" step="10" value="0" oninput="updateDesignParameters()" class="w-full">
+        </div>
+
         <!-- Target apogee, auto-tune and design review -->
         <div class="space-y-2 border-t-2 border-sky-200 pt-3">
           <label class="text-xs font-bold text-sky-900">Target Apogee</label>
@@ -215,7 +239,7 @@
             <option value="30000" selected>Stratosphere: 30 km</option>
             <option value="100000">Karman line: 100 km</option>
           </select>
-          <button onclick="autoTune()" class="sketch-btn sketch-btn-accent w-full py-2 text-sm">Auto-Tune Engine & Chute</button>
+          <button id="btn-autotune" onclick="autoTune()" class="sketch-btn sketch-btn-accent w-full py-2 text-sm">Auto-Tune Engine & Chute</button>
           <div id="ai-review" class="text-xs font-bold bg-sky-50 border-2 border-sky-200 rounded-lg p-2 leading-relaxed"></div>
         </div>
       </div>
@@ -233,6 +257,9 @@
           <div class="flex gap-2">
             <button onclick="zoom3DCamera(0.8)" class="sketch-btn px-2.5 py-1 text-xs">Zoom In</button>
             <button onclick="zoom3DCamera(1.2)" class="sketch-btn px-2.5 py-1 text-xs">Zoom Out</button>
+            <label class="sketch-btn px-2.5 py-1 text-xs">Paint Hull<input type="file" accept="image/*" class="hidden" onchange="paintHull(this.files[0]); this.value=''"></label>
+            <button onclick="clearPaint()" class="sketch-btn px-2.5 py-1 text-xs">Clear Paint</button>
+            <button onclick="save3DPNG()" class="sketch-btn px-2.5 py-1 text-xs">Save PNG</button>
             <button onclick="toggleSpin()" class="sketch-btn px-2.5 py-1 text-xs">Spin</button>
             <button onclick="reset3DCameraFrame()" class="sketch-btn sketch-btn-accent px-2.5 py-1 text-xs">Reset View</button>
           </div>
@@ -265,6 +292,7 @@
             <button onclick="loadSketchPreset('delta')" class="sketch-btn px-2 py-1 text-xs">Delta Wing</button>
             <button onclick="loadSketchPreset('starship')" class="sketch-btn px-2 py-1 text-xs">Sci-Fi Cruiser</button>
             <button onclick="loadSketchPreset('pencil')" class="sketch-btn px-2 py-1 text-xs">Pencil Launcher</button>
+            <label class="sketch-btn sketch-btn-accent px-2 py-1 text-xs">Upload Photo<input type="file" accept="image/*" class="hidden" onchange="loadPhoto(this.files[0]); this.value=''"></label>
             <button onclick="clearSketchCanvas()" class="sketch-btn sketch-btn-danger px-2 py-1 text-xs">Clear</button>
           </div>
         </div>
@@ -274,7 +302,7 @@
         </div>
 
         <div class="flex justify-between items-center text-xs text-sky-700 font-bold gap-3">
-          <span>Each stroke rebuilds the rocket from your outline.</span>
+          <span id="sketch-msg">Each stroke rebuilds the rocket from your outline.</span>
           <button onclick="switchMainTab('sim')" class="sketch-btn sketch-btn-accent px-6 py-2 text-sm whitespace-nowrap">Go to Launch Simulator</button>
         </div>
       </div>
@@ -323,6 +351,12 @@
         <button id="btn-pause" onclick="togglePause()" class="sketch-btn px-2 py-1 ml-auto">Pause</button>
       </div>
 
+      <div class="flex gap-1.5 text-xs">
+        <button id="btn-rec" onclick="toggleRecording()" class="sketch-btn px-2 py-1">Record Flight</button>
+        <button onclick="saveSimPNG()" class="sketch-btn px-2 py-1">Save PNG</button>
+        <button id="btn-sound" onclick="toggleSound()" class="sketch-btn px-2 py-1 ml-auto">Sound: On</button>
+      </div>
+
       <div class="flex gap-2 pt-1">
         <button id="btn-launch" onclick="launchMission()" class="sketch-btn sketch-btn-accent flex-1 py-3 text-base">Launch</button>
         <button id="btn-abort" onclick="abortMission()" class="sketch-btn sketch-btn-danger px-4 py-3 text-base">Reset</button>
@@ -336,9 +370,13 @@
       </div>
       <div class="w-full flex-grow relative border-3 border-sky-300 rounded-xl overflow-hidden bg-sky-300">
         <canvas id="sim-canvas" class="w-full h-full block"></canvas>
+        <div id="countdown" class="hidden absolute inset-0 flex items-center justify-center text-8xl font-black text-white pointer-events-none" style="text-shadow:0 0 30px #000"></div>
       </div>
     </section>
   </main>
+
+  <div id="demo-caption" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 sketch-card px-5 py-3 text-base font-bold z-50 text-sky-900"></div>
+  <div id="toast" class="hidden fixed top-6 left-1/2 -translate-x-1/2 sketch-card px-4 py-2 text-sm font-bold z-50 text-sky-900"></div>
 
   <!-- Flight report -->
   <div id="modal-recap" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -369,7 +407,7 @@
       bodyStages: 1, bodyLength: 8.0, bodyDiameter: 1.0, bodyWallThickness: 4.0, bodyColor: '#0f172a',
       finCount: 4, finShape: 'swept', finSpan: 0.70, finSweep: 35, finColor: '#0284c7',
       engineFuel: 'rp1', engineCluster: 3, engineThrust: 120, enginePropellant: 2200, engineBellRadius: 0.35,
-      payloadMass: 150, chuteDiameter: 6.0, chuteAltitude: 1200,
+      payloadMass: 150, chuteDiameter: 6.0, chuteAltitude: 1200, landReserve: 0,
 
       // Outline taken from the sketch, in metres. null means use the built-in nose/fin shapes.
       sketch: null,
@@ -378,6 +416,59 @@
       dryMass: 0, wetMass: 0, frontalArea: 0, baseCd: 0.20,
       com: 0, cop: 0, stabilityMargin: 0, isp: 310
     };
+
+    // ---- Planets ----
+    // g = surface gravity, R = radius, rho0 = surface air density, H = scale height, sound = speed of sound
+    const PLANETS = {
+      earth: { name: 'Earth',    g: 9.81, R: 6371000, rho0: 1.225, H: 8500,  sound: 340, hue: 200, sat: 90, skyTop: '#2b8be0', skyBot: '#bfe6ff', ground: '#3f9d5a', cloud: '#ffffff', cloudA: 0.55 },
+      moon:  { name: 'The Moon', g: 1.62, R: 1737000, rho0: 0,     H: 1,     sound: 1,   hue: 225, sat: 14, skyTop: '#000000', skyBot: '#05060d', ground: '#9a9aa3', cloud: null,      cloudA: 0 },
+      mars:  { name: 'Mars',     g: 3.71, R: 3390000, rho0: 0.020, H: 11100, sound: 240, hue: 14,  sat: 78, skyTop: '#b9784a', skyBot: '#f0c9a2', ground: '#b5532f', cloud: '#f3d2b3', cloudA: 0.25 },
+      venus: { name: 'Venus',    g: 8.87, R: 6052000, rho0: 65,    H: 15900, sound: 410, hue: 40,  sat: 85, skyTop: '#b97a1d', skyBot: '#f8dc8d', ground: '#8a5a2b', cloud: '#ffe9ae', cloudA: 0.6 },
+      titan: { name: 'Titan',    g: 1.35, R: 2575000, rho0: 5.3,   H: 20000, sound: 195, hue: 28,  sat: 72, skyTop: '#8f4f16', skyBot: '#e8a55a', ground: '#6b4a2a', cloud: '#d98a3a', cloudA: 0.35 }
+    };
+    let PLANET = PLANETS.earth;
+    let planetMesh, atmoMesh, groundDisc, starField, dir2Light, flames = [];
+    const exhaust = [];
+
+    const atmoDensity = (y) => (y > PLANET.H * 10 ? 0 : PLANET.rho0 * Math.exp(-y / PLANET.H));
+
+    // Drag can slow the rocket down but never flip its direction inside one step (keeps thick atmospheres stable)
+    function limitDrag(drag, m, v, dt) {
+      const max = Math.abs(v) * m / dt;
+      return Math.abs(drag) > max ? Math.sign(drag) * max : drag;
+    }
+
+    function mixHex(a, b, t) {
+      const p = (hx) => [1, 3, 5].map(i => parseInt(hx.slice(i, i + 2), 16));
+      const x = p(a), y = p(b);
+      return 'rgb(' + x.map((v, i) => Math.round(v + (y[i] - v) * t)).join(',') + ')';
+    }
+
+    const cssVar = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+    // Tailwind's sky-* colors follow the planet's theme variables
+    (function () {
+      let css = '';
+      [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950].forEach(n => {
+        css += `.text-sky-${n}{color:var(--s${n})!important}.bg-sky-${n}{background-color:var(--s${n})!important}.border-sky-${n}{border-color:var(--s${n})!important}`;
+      });
+      const st = document.createElement('style');
+      st.textContent = css;
+      document.head.appendChild(st);
+    })();
+
+    function setPlanet(key) {
+      const sel = document.getElementById('planet-select');
+      if (simActive) { sel.value = Object.keys(PLANETS).find(k => PLANETS[k] === PLANET); return; }   // no switching mid-flight
+      PLANET = PLANETS[key];
+      sel.value = key;
+      const L = { 50: 97, 100: 93, 200: 86, 300: 76, 400: 62, 500: 50, 600: 42, 700: 35, 800: 27, 900: 20, 950: 12 };
+      for (const n in L) document.documentElement.style.setProperty('--s' + n, `hsl(${PLANET.hue} ${PLANET.sat}% ${L[n]}%)`);
+      document.getElementById('planet-info').innerHTML = `g ${PLANET.g} m/s²<br>air ${PLANET.rho0} kg/m³`;
+      apply3DPlanet();
+      abortMission();
+      updateDesignParameters();
+    }
 
     // ---- 3D view ----
     let scene3D, camera3D, renderer3D, rocketMeshGroup;
@@ -399,6 +490,8 @@
       scene3D.add(new THREE.AmbientLight(0xffffff, 0.8));
       const dir1 = new THREE.DirectionalLight(0xffffff, 0.9); dir1.position.set(20, 40, 30); scene3D.add(dir1);
       const dir2 = new THREE.DirectionalLight(0x7dd3fc, 0.4); dir2.position.set(-20, -10, -20); scene3D.add(dir2);
+      dir2Light = dir2;
+      build3DBackdrop();
 
       rocketMeshGroup = new THREE.Group();
       scene3D.add(rocketMeshGroup);
@@ -425,10 +518,13 @@
 
       rebuild3DRocket();
       reset3DCameraFrame();
+      apply3DPlanet();
 
       (function render3DLoop() {
         requestAnimationFrame(render3DLoop);
         if (!isDragging3D && autoSpin && rocketMeshGroup) rocketMeshGroup.rotation.y += 0.003;
+        flames.forEach(f => { f.scale.y = 0.8 + Math.random() * 0.4; });
+        if (starField) starField.rotation.y += 0.0003;
         renderer3D.render(scene3D, camera3D);
       })();
     }
@@ -437,6 +533,7 @@
     function rebuild3DRocket() {
       if (!rocketMeshGroup) return;
       while (rocketMeshGroup.children.length > 0) rocketMeshGroup.remove(rocketMeshGroup.children[0]);
+      flames = [];
 
       const r = ROCKET_PARAM.bodyDiameter / 2;
       const totalBodyLen = ROCKET_PARAM.bodyLength;
@@ -447,6 +544,7 @@
       const bodyMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(ROCKET_PARAM.bodyColor), roughness: 0.3, metalness: 0.7, side: THREE.DoubleSide });
       const finMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(ROCKET_PARAM.finColor), roughness: 0.3, metalness: 0.4 });
       const engineMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.5, metalness: 0.8 });
+      if (hullTex) { bodyMat.map = hullTex; bodyMat.color.set(0xffffff); }   // painted hull
 
       // Body, nose and fins
       const SK = ROCKET_PARAM.sketch;
@@ -540,6 +638,14 @@
           bell.position.set(Math.cos(a) * dist, -0.3, Math.sin(a) * dist);
         }
         rocketMeshGroup.add(bell);
+
+        // Soft engine glow
+        const flame = new THREE.Mesh(new THREE.ConeGeometry(bellR * 0.85, 1.8, 20, 1, true),
+          new THREE.MeshBasicMaterial({ color: 0xffa24a, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false }));
+        flame.rotation.x = Math.PI;
+        flame.position.set(bell.position.x, -1.5, bell.position.z);
+        rocketMeshGroup.add(flame);
+        flames.push(flame);
       }
     }
 
@@ -554,6 +660,43 @@
       camera3D.position.set(0, h * 0.5, h * 2.2);
       camera3D.lookAt(0, h * 0.5, 0);
       if (rocketMeshGroup) rocketMeshGroup.rotation.set(0, 0, 0);
+      if (planetMesh) {   // planet behind the rocket, ground disc under it
+        planetMesh.scale.setScalar(h * 1.1);
+        planetMesh.position.set(-h * 1.5, -h * 0.5, -h * 2.4);
+        atmoMesh.scale.setScalar(h * 1.1);
+        atmoMesh.position.copy(planetMesh.position);
+        groundDisc.scale.setScalar(h * 0.5);
+        groundDisc.position.y = -0.7;
+      }
+    }
+
+    function build3DBackdrop() {
+      const n = 900, pos = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) {
+        const a = Math.random() * 6.283, b = Math.acos(2 * Math.random() - 1);
+        pos.set([400 * Math.sin(b) * Math.cos(a), 400 * Math.cos(b), 400 * Math.sin(b) * Math.sin(a)], i * 3);
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      starField = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size: 1.6, sizeAttenuation: false }));
+      planetMesh = new THREE.Mesh(new THREE.SphereGeometry(1, 64, 48), new THREE.MeshStandardMaterial({ roughness: 1 }));
+      atmoMesh = new THREE.Mesh(new THREE.SphereGeometry(1.07, 64, 48),
+        new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, side: THREE.BackSide, depthWrite: false }));
+      groundDisc = new THREE.Mesh(new THREE.CircleGeometry(1, 64), new THREE.MeshStandardMaterial({ roughness: 1 }));
+      groundDisc.rotation.x = -Math.PI / 2;
+      scene3D.add(starField, planetMesh, atmoMesh, groundDisc);
+    }
+
+    function apply3DPlanet() {
+      if (!scene3D || !planetMesh) return;
+      const P = PLANET, c = new THREE.Color(P.ground);
+      scene3D.background = new THREE.Color().setHSL(P.hue / 360, 0.45, 0.05);
+      planetMesh.material.color.copy(c);
+      planetMesh.material.emissive.copy(c).multiplyScalar(0.12);
+      groundDisc.material.color.copy(c).multiplyScalar(0.7);
+      atmoMesh.visible = P.rho0 > 0;
+      atmoMesh.material.color.set(P.skyBot);
+      dir2Light.color.set(P.skyBot);
     }
 
     function zoom3DCamera(factor) {
@@ -672,18 +815,7 @@
       noseY -= y0;
       const H = pts[pts.length - 1].y;
 
-      // Parts of the outline wider than the body become fins
-      const fins = [];
-      let run = [];
-      const flush = () => {
-        if (run.length > 1) {
-          const a = run[0], b = run[run.length - 1];
-          fins.push([[a.hull * 0.85, a.y], ...run.map(q => [q.full, q.y]), [b.hull * 0.85, b.y]]);
-        }
-        run = [];
-      };
-      pts.forEach(q => { if (q.full > q.hull * 1.04 + 0.01) run.push(q); else flush(); });
-      flush();
+      const fins = buildFins(pts);   // parts of the outline wider than the body
 
       ROCKET_PARAM.sketch = { pts, noseY, H, fins };
 
@@ -745,6 +877,7 @@
       R.payloadMass = parseFloat($('param-payload-mass').value);
       R.chuteDiameter = parseFloat($('param-chute-size').value);
       R.chuteAltitude = parseFloat($('param-chute-alt').value);
+      R.landReserve = Math.min(parseFloat($('param-land-reserve').value), R.enginePropellant * 0.95);
 
       // Labels
       $('lbl-nose-shape').innerText = R.noseShape;
@@ -766,6 +899,7 @@
       $('lbl-payload-mass').innerText = `${R.payloadMass} kg`;
       $('lbl-chute-size').innerText = `${R.chuteDiameter.toFixed(1)} m`;
       $('lbl-chute-alt').innerText = `${R.chuteAltitude} m`;
+      $('lbl-land-reserve').innerText = `${R.landReserve} kg`;
 
       R.isp = R.engineFuel === 'lh2' ? 450 : R.engineFuel === 'ch4' ? 380 : 310;
 
@@ -793,7 +927,7 @@
       R.cop = R.noseHeight + R.bodyLength * 0.75;
       R.stabilityMargin = (R.cop - R.com) / R.bodyDiameter;
 
-      const twr = (R.engineThrust * 1000 * R.engineCluster) / (R.wetMass * 9.81);
+      const twr = (R.engineThrust * 1000 * R.engineCluster) / (R.wetMass * PLANET.g);
 
       $('dyn-dry-mass').innerText = `${R.dryMass} kg`;
       $('dyn-wet-mass').innerText = `${R.wetMass} kg`;
@@ -848,9 +982,9 @@
       document.getElementById('btn-pause').innerText = simPaused ? 'Resume' : 'Pause';
     }
 
-    function launchMission() {
+    function startFlight() {
       const totalThrustN = ROCKET_PARAM.engineThrust * 1000 * ROCKET_PARAM.engineCluster;
-      if (totalThrustN <= ROCKET_PARAM.wetMass * 9.81) {
+      if (totalThrustN <= ROCKET_PARAM.wetMass * PLANET.g) {
         alert("Thrust-to-weight is below 1, so this rocket can't lift off. Add thrust, or cut propellant or payload.");
         return;
       }
@@ -861,7 +995,8 @@
       document.getElementById('btn-pause').innerText = 'Pause';
       graphData = { t: [], alt: [], vel: [] };
       simActive = true;
-      playRocketAudio('launch');
+      lastPhase = 'POWERED';
+      startEngineSound();
 
       document.getElementById('btn-launch').disabled = true;
       const pill = document.getElementById('sim-status-pill');
@@ -870,6 +1005,7 @@
     }
 
     function abortMission() {
+      stopEngineSound();
       simActive = false;
       simPaused = false;
       document.getElementById('btn-pause').innerText = 'Pause';
@@ -884,27 +1020,35 @@
     // One Euler step
     function stepPhysics(dt) {
       if (!simActive) return;
-      const g0 = 9.81, rEarth = 6371000;
-      const g = g0 * Math.pow(rEarth / (rEarth + simState.y), 2);
-      const rho = simState.y > 85000 ? 0 : 1.225 * Math.exp(-simState.y / 8500);
+      const g0 = 9.81;   // standard gravity, only used in the Isp definition
+      const g = PLANET.g * Math.pow(PLANET.R / (PLANET.R + simState.y), 2);
+      const rho = atmoDensity(simState.y);
 
       const totalThrustN = ROCKET_PARAM.engineThrust * 1000 * ROCKET_PARAM.engineCluster;
       const mdot = totalThrustN / (ROCKET_PARAM.isp * g0);
 
+      const reserve = ROCKET_PARAM.landReserve;
       let currentThrust = 0;
-      if (simState.fuel > 0 && simState.phase === 'POWERED') {
-        currentThrust = totalThrustN;
+      simState.burning = false;
+      if (simState.phase === 'POWERED') {
+        if (simState.fuel > reserve) currentThrust = totalThrustN;
+        else simState.phase = 'COASTING';
+      } else if (reserve > 0 && simState.fuel > 0 && simState.v < -2) {
+        // Landing burn: light the engine when the stopping distance catches up with the altitude
+        const aUp = totalThrustN / simState.m - g;
+        if (aUp > 0 && simState.y <= simState.v * simState.v / (2 * aUp) * 1.15 + 5) currentThrust = totalThrustN;
+      }
+      if (currentThrust > 0) {
+        simState.burning = true;
         simState.fuel = Math.max(0, simState.fuel - mdot * dt);
         simState.m = ROCKET_PARAM.dryMass + simState.fuel;
-      } else if (simState.phase === 'POWERED') {
-        simState.phase = 'COASTING';
       }
 
       let currentCd = ROCKET_PARAM.baseCd;
       if (simState.phase === 'PARACHUTE') {
         currentCd += 1.3 * (Math.pow(ROCKET_PARAM.chuteDiameter, 2) / ROCKET_PARAM.frontalArea);
       }
-      const dragForce = 0.5 * rho * simState.v * simState.v * currentCd * ROCKET_PARAM.frontalArea * (simState.v >= 0 ? 1 : -1);
+      const dragForce = limitDrag(0.5 * rho * simState.v * simState.v * currentCd * ROCKET_PARAM.frontalArea * (simState.v >= 0 ? 1 : -1), simState.m, simState.v, dt);
       const netForce = currentThrust - simState.m * g - dragForce;
 
       simState.a = netForce / simState.m;
@@ -937,7 +1081,7 @@
       const $ = (id) => document.getElementById(id);
       $('tele-alt').innerText = simState.y >= 10000 ? `${(simState.y / 1000).toFixed(2)} km` : `${Math.round(simState.y)} m`;
       $('tele-vel').innerText = `${Math.round(simState.v)} m/s`;
-      $('tele-mach').innerText = (Math.abs(simState.v) / 340).toFixed(2);
+      $('tele-mach').innerText = PLANET.rho0 ? (Math.abs(simState.v) / PLANET.sound).toFixed(2) : 'n/a';
       $('tele-maxq').innerText = `${Math.round(q)} kPa`;
       $('tele-time').innerText = `${simState.t.toFixed(1)} s`;
       $('tele-phase').innerText = simState.phase;
@@ -955,7 +1099,10 @@
       const now = performance.now();
       const frame = Math.min(0.1, (now - lastTick) / 1000);
       lastTick = now;
-      if (!simActive || simPaused) return;
+      if (!simActive || simPaused) {
+        if (simPaused && engine) engine.g.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
+        return;
+      }
 
       simAccum += frame * simSpeed;
       let n = 0;
@@ -964,28 +1111,38 @@
         simAccum -= PHYS_DT;
       }
       updateTelemetryUI(...simState.last);
+      updateEngineSound();
+      if (simState.phase !== lastPhase) {   // sound effects for phase changes
+        if (simState.phase === 'PARACHUTE') noiseBurst(0.5, 1500, 0.25);
+        if (simState.phase === 'LANDED') noiseBurst(0.3, 200, 0.3);
+        if (simState.phase === 'CRASHED') noiseBurst(1.2, 400, 0.6);
+        lastPhase = simState.phase;
+      }
     }
 
     // ---- Headless sim, auto-tune and design review ----
     // Same physics and step size as the live flight, just without drawing anything
-    function simulateHeadless(p) {
-      const g0 = 9.81, Re = 6371000, A = ROCKET_PARAM.frontalArea, dry = ROCKET_PARAM.dryMass;
+    function simulateHeadless(p, dt = PHYS_DT) {
+      const g0 = 9.81, A = ROCKET_PARAM.frontalArea, dry = ROCKET_PARAM.dryMass;
       const mdot = p.thrust / (ROCKET_PARAM.isp * g0);
       let t = 0, y = 0, v = 0, fuel = p.prop, phase = 'POWERED', maxAlt = 0;
       while (t < 40000) {   // long enough for very high flights to come back down
-        const g = g0 * Math.pow(Re / (Re + y), 2);
-        const rho = y > 85000 ? 0 : 1.225 * Math.exp(-y / 8500);
+        const g = PLANET.g * Math.pow(PLANET.R / (PLANET.R + y), 2);
+        const rho = atmoDensity(y);
         let F = 0, m = dry + fuel;
         if (phase === 'POWERED') {
-          if (fuel > 0) { F = p.thrust; fuel = Math.max(0, fuel - mdot * PHYS_DT); m = dry + fuel; }
-          else phase = 'COASTING';
+          if (fuel > p.reserve) F = p.thrust; else phase = 'COASTING';
+        } else if (p.reserve > 0 && fuel > 0 && v < -2) {
+          const aUp = p.thrust / m - g;
+          if (aUp > 0 && y <= v * v / (2 * aUp) * 1.15 + 5) F = p.thrust;
         }
+        if (F > 0) { fuel = Math.max(0, fuel - mdot * dt); m = dry + fuel; }
         let cd = ROCKET_PARAM.baseCd;
         if (phase === 'PARACHUTE') cd += 1.3 * p.chute * p.chute / A;
-        const drag = 0.5 * rho * v * v * cd * A * (v >= 0 ? 1 : -1);
-        v += ((F - m * g - drag) / m) * PHYS_DT;
-        y += v * PHYS_DT;
-        t += PHYS_DT;
+        const drag = limitDrag(0.5 * rho * v * v * cd * A * (v >= 0 ? 1 : -1), m, v, dt);
+        v += ((F - m * g - drag) / m) * dt;
+        y += v * dt;
+        t += dt;
         if (y > maxAlt) maxAlt = y;
         if (v < 0 && phase === 'COASTING' && y <= p.chuteAlt) phase = 'PARACHUTE';
         else if (phase === 'PARACHUTE' && y > p.chuteAlt) phase = 'COASTING';
@@ -996,27 +1153,39 @@
 
     function currentCandidate() {
       const R = ROCKET_PARAM;
-      return { thrust: R.engineThrust * 1000 * R.engineCluster, prop: R.enginePropellant, chute: R.chuteDiameter, chuteAlt: R.chuteAltitude };
+      return { thrust: R.engineThrust * 1000 * R.engineCluster, reserve: R.landReserve, prop: R.enginePropellant, chute: R.chuteDiameter, chuteAlt: R.chuteAltitude };
     }
 
     // Random hill-climb over thrust, propellant and parachute settings
     function autoTune() {
+      const btn = document.getElementById('btn-autotune');
+      btn.innerText = 'Tuning...';
+      setTimeout(() => { runAutoTune(); btn.innerText = 'Auto-Tune Engine & Chute'; }, 30);
+    }
+
+    function runAutoTune() {
       const R = ROCKET_PARAM;
       const target = +document.getElementById('param-target').value;
       const snap = (v, a, b, s) => Math.round(Math.min(b, Math.max(a, v)) / s) * s;
 
+      let stepSize = 0.1;   // coarse steps for the wide search, exact steps to finish
       const score = (c) => {
-        if (c.thrust < (R.dryMass + c.prop) * 9.81 * 1.15) return -10;   // too heavy to lift off
-        const r = simulateHeadless(c);
+        if (c.thrust < (R.dryMass + c.prop) * PLANET.g * 1.15) return -10;   // too heavy to lift off
+        const r = simulateHeadless(c, stepSize);
         return -Math.abs(r.maxAlt - target) / target - (r.impact > 7 ? 2 + r.impact / 50 : 0);
       };
 
       let best = currentCandidate(), bestScore = score(best);
-      const jitter = () => 1 + (Math.random() - 0.5) * 0.4;
-      for (let i = 0; i < 250; i++) {
+      let spread = 0.4;   // big jumps early, small adjustments later
+      const jitter = () => 1 + (Math.random() - 0.5) * spread;
+      for (let i = 0; i < 360; i++) {
+        if (i === 300) { stepSize = PHYS_DT; bestScore = score(best); }   // last 60 tries use the exact physics
+        spread = i < 300 ? 0.05 + 0.4 * (1 - i / 300) : 0.04;
+        const prop = snap(best.prop * jitter(), 20, 15000, 10);
         const c = {
           thrust: snap(best.thrust * jitter() / R.engineCluster / 1000, 20, 800, 10) * 1000 * R.engineCluster,
-          prop: snap(best.prop * jitter(), 20, 15000, 10),
+          prop,
+          reserve: Math.min(prop * 0.9, Math.max(0, snap(best.reserve + (Math.random() - 0.5) * spread * Math.max(60, best.prop), 0, 15000, 10))),
           chute: snap(best.chute * jitter(), 2, 20, 0.5),
           chuteAlt: snap(best.chuteAlt * jitter(), 200, 5000, 100)
         };
@@ -1029,6 +1198,7 @@
       set('param-engine-propellant', best.prop);
       set('param-chute-size', best.chute);
       set('param-chute-alt', best.chuteAlt);
+      set('param-land-reserve', best.reserve);
       updateDesignParameters();
     }
 
@@ -1036,11 +1206,12 @@
       const el = document.getElementById('ai-review');
       if (!el) return;
       const R = ROCKET_PARAM, tips = [];
-      const twr = R.engineThrust * 1000 * R.engineCluster / (R.wetMass * 9.81);
+      const twr = R.engineThrust * 1000 * R.engineCluster / (R.wetMass * PLANET.g);
 
       if (R.stabilityMargin < 1) tips.push('Unstable (under 1 caliber): make the fins bigger or move weight forward.');
       else if (R.stabilityMargin > 3.5) tips.push('Very stable (over 3.5 calibers). It will turn into the wind, so you could trim the fins.');
       if (twr < 1.2) tips.push(`Thrust-to-weight is only ${twr.toFixed(2)}. Add thrust or cut propellant.`);
+      if (!PLANET.rho0 && R.landReserve <= 0) tips.push("No air here, so the parachute does nothing. Set a landing fuel reserve on the Mission tab.");
       if (twr < 1) { el.innerHTML = tips.join('<br>'); return; }
 
       const r = simulateHeadless(currentCandidate());
@@ -1087,8 +1258,8 @@
         });
         ctx.stroke(); ctx.setLineDash([]);
       };
-      plot(graphData.alt, maxA, '#38bdf8', 3, []);
-      plot(graphData.vel, maxV, '#7dd3fc', 2, [4, 4]);
+      plot(graphData.alt, maxA, cssVar('--s400'), 3, []);
+      plot(graphData.vel, maxV, cssVar('--s300'), 2, [4, 4]);
     }
 
     let simCanvas, simCtx;
@@ -1110,31 +1281,112 @@
         requestAnimationFrame(renderSimScene);
         const w = simCanvas.width, h = simCanvas.height, alt = simState.y;
 
-        // Sky color by altitude
+        const P = PLANET, now = performance.now();
+        const skyRY = Math.max(h * 0.25, h - 80 - alt * 0.08);
+        const t = P.rho0 ? Math.min(1, Math.pow(alt / (P.H * 9), 0.7)) : 1;   // 0 = thick air, 1 = space
+
         const sky = simCtx.createLinearGradient(0, 0, 0, h);
-        if (alt < 10000)      { sky.addColorStop(0, '#7dd3fc'); sky.addColorStop(1, '#bae6fd'); }
-        else if (alt < 35000) { sky.addColorStop(0, '#1e3a8a'); sky.addColorStop(1, '#38bdf8'); }
-        else if (alt < 70000) { sky.addColorStop(0, '#311b92'); sky.addColorStop(1, '#1e3a8a'); }
-        else                  { sky.addColorStop(0, '#020617'); sky.addColorStop(1, '#1e1b4b'); }
+        sky.addColorStop(0, mixHex(P.skyTop, '#01030f', Math.min(1, t * 1.3)));
+        sky.addColorStop(1, mixHex(P.skyBot, '#0a0f2e', t));
         simCtx.fillStyle = sky;
         simCtx.fillRect(0, 0, w, h);
 
-        if (alt > 25000) {
-          simCtx.fillStyle = '#ffffff';
-          for (let i = 0; i < 30; i++) simCtx.fillRect((i * 37) % w, (i * 53) % (h * 0.7), 2, 2);
+        // Stars come out as the air thins
+        const sa = Math.max(0, t - 0.2) * 1.25;
+        if (sa > 0) {
+          simCtx.fillStyle = '#fff';
+          for (let i = 0; i < 110; i++) {
+            simCtx.globalAlpha = Math.min(1, sa) * (0.45 + 0.55 * Math.sin(now / 700 + i * 1.7));
+            const sz = i % 4 ? 1.5 : 2.5;
+            simCtx.fillRect((i * 137.5) % w, (i * 71.3) % (h * 0.85), sz, sz);
+          }
+          simCtx.globalAlpha = 1;
         }
 
-        // Ground and pad
+        const sun = simCtx.createRadialGradient(w * 0.8, h * 0.2, 0, w * 0.8, h * 0.2, 170);
+        sun.addColorStop(0, 'rgba(255,244,214,0.55)');
+        sun.addColorStop(1, 'rgba(255,244,214,0)');
+        simCtx.fillStyle = sun;
+        simCtx.fillRect(0, 0, w, h);
+
+        // Clouds and haze drift past as you climb
+        if (P.cloud && alt < P.H * 6) {
+          simCtx.fillStyle = P.cloud;
+          simCtx.globalAlpha = P.cloudA * (1 - alt / (P.H * 6));
+          for (let i = 0; i < 9; i++) {
+            const cy = skyRY - (400 + i * P.H * 0.35 - alt) * 0.1;
+            const cx = (i * 211 + now * 0.01 * (1 + i % 3)) % (w + 300) - 150, cw = 70 + (i * 37) % 70;
+            for (let k = 0; k < 3; k++) {
+              simCtx.beginPath();
+              simCtx.ellipse(cx + k * cw * 0.45, cy + (k % 2) * 5, cw * 0.5, 12 + (i % 3) * 4, 0, 0, 6.2832);
+              simCtx.fill();
+            }
+          }
+          simCtx.globalAlpha = 1;
+        }
+
+        // Speed streaks
+        if (Math.abs(simState.v) > 120 && simState.phase !== 'LANDED' && simState.phase !== 'CRASHED') {
+          const dir = simState.v > 0 ? 1 : -1, len = Math.min(70, 14 + Math.abs(simState.v) / 20);
+          simCtx.strokeStyle = 'rgba(255,255,255,0.22)';
+          simCtx.lineWidth = 1.5;
+          simCtx.beginPath();
+          for (let i = 0; i < 14; i++) {
+            const y = (((i * 83 + dir * now * 0.6) % h) + h) % h, x = (i * 97) % w;
+            simCtx.moveTo(x, y); simCtx.lineTo(x, y + len);
+          }
+          simCtx.stroke();
+        }
+
+        // Ground is part of a big circle, so the horizon curves as you climb
         const groundY = h - 40 + alt * 0.1;
-        if (groundY < h + 100) {
-          simCtx.fillStyle = '#86efac';
-          simCtx.fillRect(0, groundY, w, h);
+        if (groundY < h + 400) {
+          const Rpx = w * 1.4;
+          simCtx.save();
+          simCtx.beginPath();
+          simCtx.arc(w / 2, groundY + Rpx, Rpx, 0, 6.2832);
+          if (P.rho0) { simCtx.shadowColor = P.skyBot; simCtx.shadowBlur = 28; }
+          simCtx.fillStyle = P.ground;
+          simCtx.fill();
+          simCtx.restore();
+
+          if (alt < 5000) {   // low hills near the pad
+            simCtx.fillStyle = mixHex(P.ground, '#000000', 0.35);
+            simCtx.beginPath();
+            simCtx.moveTo(0, groundY + 2);
+            for (let x = 0; x <= w; x += 16) simCtx.lineTo(x, groundY - 4 - (Math.sin(x * 0.013) + Math.sin(x * 0.031 + 2) + 2) * 9 * (1 - alt / 5000));
+            simCtx.lineTo(w, groundY + 2);
+            simCtx.fill();
+          }
           simCtx.fillStyle = '#475569';
           simCtx.fillRect(w / 2 - 30, groundY - 15, 60, 15);
+          simCtx.fillRect(w / 2 + 34, groundY - 70, 6, 70);   // launch tower
         }
 
         const rx = w / 2;
         const ry = Math.max(h * 0.25, h - 80 - alt * 0.08);
+
+        // Exhaust: hot glow that cools into smoke
+        if ((simState.phase === 'POWERED' || simState.burning) && exhaust.length < 600) {
+          for (let i = 0; i < 4; i++) exhaust.push({ x: rx + (Math.random() - 0.5) * 10, y: ry + 28, vx: (Math.random() - 0.5) * 1.6, vy: 2 + Math.random() * 3, life: 1, s: 5 + Math.random() * 7 });
+        }
+        for (let i = exhaust.length - 1; i >= 0; i--) {
+          const p = exhaust[i];
+          p.life -= 0.014; p.x += p.vx; p.y += p.vy; p.s += 0.25;
+          if (p.life <= 0) { exhaust.splice(i, 1); continue; }
+          if (p.life > 0.6) {
+            simCtx.globalCompositeOperation = 'lighter';
+            simCtx.fillStyle = `rgba(255,${Math.round(120 + 100 * (p.life - 0.6) / 0.4)},60,${(p.life - 0.5) * 0.7})`;
+          } else {
+            simCtx.globalCompositeOperation = 'source-over';
+            simCtx.fillStyle = `rgba(210,210,215,${p.life * 0.28})`;
+          }
+          simCtx.beginPath();
+          simCtx.arc(p.x, p.y, p.s, 0, 6.2832);
+          simCtx.fill();
+        }
+        simCtx.globalCompositeOperation = 'source-over';
+
         simCtx.save();
         simCtx.translate(rx, ry);
 
@@ -1180,18 +1432,438 @@
           simCtx.fillRect(12, 10, 10, 15);
         }
 
-        if (simState.phase === 'POWERED') {
-          simCtx.fillStyle = '#f97316';
+        if (simState.phase === 'POWERED' || simState.burning) {
+          const fl = 40 + Math.random() * 40, gr = simCtx.createLinearGradient(0, 25, 0, 25 + fl);
+          gr.addColorStop(0, '#fff7c2'); gr.addColorStop(0.4, '#ffa733'); gr.addColorStop(1, 'rgba(249,115,22,0)');
+          simCtx.globalCompositeOperation = 'lighter';
+          simCtx.fillStyle = gr;
           simCtx.beginPath();
-          simCtx.moveTo(-8, 25); simCtx.lineTo(0, 45 + Math.random() * 40); simCtx.lineTo(8, 25);
+          simCtx.moveTo(-9, 25); simCtx.lineTo(0, 25 + fl); simCtx.lineTo(9, 25);
           simCtx.closePath(); simCtx.fill();
+          simCtx.globalCompositeOperation = 'source-over';
+        }
+
+        // Heating glow on the nose when dynamic pressure is high
+        const heat = Math.min(1, simState.last[0] / 400);
+        if (heat > 0.05) {
+          const hg = simCtx.createRadialGradient(0, -45, 2, 0, -45, 36);
+          hg.addColorStop(0, `rgba(255,170,80,${0.6 * heat})`); hg.addColorStop(1, 'rgba(255,120,40,0)');
+          simCtx.globalCompositeOperation = 'lighter';
+          simCtx.fillStyle = hg;
+          simCtx.fillRect(-40, -90, 80, 80);
+          simCtx.globalCompositeOperation = 'source-over';
         }
         simCtx.restore();
+
+        // Planet label
+        simCtx.fillStyle = 'rgba(0,0,0,0.35)';
+        simCtx.fillRect(10, 10, 215, 44);
+        simCtx.fillStyle = '#fff';
+        simCtx.font = 'bold 15px "Architects Daughter", sans-serif';
+        simCtx.fillText(P.name.toUpperCase(), 20, 29);
+        simCtx.font = '12px "Architects Daughter", sans-serif';
+        simCtx.fillText(`g ${P.g} m/s²   air ${P.rho0} kg/m³`, 20, 46);
       })();
+    }
+
+    // ---- Extras: photo input, paint, share links, sound, recording, autopilot ----
+    let hullTex = null, soundOn = true, engine = null, lastPhase = 'PAD', counting = false;
+    let recorder = null, recChunks = [], demoRunning = false, demoStop = false;
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+    function download(url, name) { const a = document.createElement('a'); a.href = url; a.download = name; a.click(); }
+    function toast(msg) {
+      const t = document.getElementById('toast');
+      t.innerText = msg; t.classList.remove('hidden');
+      setTimeout(() => t.classList.add('hidden'), 2500);
+    }
+    function sketchMsg(msg) {
+      const e = document.getElementById('sketch-msg');
+      e.innerText = msg;
+      setTimeout(() => { e.innerText = 'Each stroke rebuilds the rocket from your outline.'; }, 5000);
+    }
+
+    // Fins = stretches of the outline that stick out past the body
+    function buildFins(pts) {
+      const fins = [];
+      let run = [];
+      const flush = () => {
+        if (run.length > 1) {
+          const a = run[0], b = run[run.length - 1];
+          fins.push([[a.hull * 0.85, a.y], ...run.map(q => [q.full, q.y]), [b.hull * 0.85, b.y]]);
+        }
+        run = [];
+      };
+      pts.forEach(q => { if (q.full > q.hull * 1.04 + 0.01) run.push(q); else flush(); });
+      flush();
+      return fins;
+    }
+
+    // ---- Photo to rocket ----
+    function morph(m, w, h, rad, grow) {   // box dilate (grow) or erode
+      const t = new Uint8Array(w * h), o = new Uint8Array(w * h), edge = grow ? 0 : 1;
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        let any = 0, all = 1;
+        for (let k = -rad; k <= rad; k++) { const xx = x + k, v = xx >= 0 && xx < w ? m[y * w + xx] : edge; if (v) any = 1; else all = 0; }
+        t[y * w + x] = grow ? any : all;
+      }
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        let any = 0, all = 1;
+        for (let k = -rad; k <= rad; k++) { const yy = y + k, v = yy >= 0 && yy < h ? t[yy * w + x] : edge; if (v) any = 1; else all = 0; }
+        o[y * w + x] = grow ? any : all;
+      }
+      return o;
+    }
+
+    // Grayscale photo in, list of half-widths (nose first) out. null if no rocket found.
+    function extractSilhouetteRows(gray, w, h) {
+      let mean = 0;
+      for (let i = 0; i < gray.length; i++) mean += gray[i];
+      mean /= gray.length;
+      if (mean < 90) for (let i = 0; i < gray.length; i++) gray[i] = 255 - gray[i];   // light drawing on dark paper
+
+      // 1. Ink = clearly darker than the local average, so uneven lighting is fine
+      const W1 = w + 1, I = new Float64Array(W1 * (h + 1));
+      for (let y = 0; y < h; y++) { let row = 0; for (let x = 0; x < w; x++) { row += gray[y * w + x]; I[(y + 1) * W1 + x + 1] = I[y * W1 + x + 1] + row; } }
+      const r = Math.max(6, Math.round(Math.min(w, h) / 16));
+      let ink = new Uint8Array(w * h);
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const x0 = Math.max(0, x - r), x1 = Math.min(w, x + r + 1), y0 = Math.max(0, y - r), y1 = Math.min(h, y + r + 1);
+        const m = (I[y1 * W1 + x1] - I[y0 * W1 + x1] - I[y1 * W1 + x0] + I[y0 * W1 + x0]) / ((x1 - x0) * (y1 - y0));
+        ink[y * w + x] = gray[y * w + x] < m - 14 ? 1 : 0;
+      }
+
+      // 2. Close small gaps in the pen line. Whatever the outside can't reach is the rocket.
+      ink = morph(ink, w, h, 2, true);
+      const out = new Uint8Array(w * h), stack = new Int32Array(w * h);
+      let sp = 0;
+      const push = (i) => { if (!ink[i] && !out[i]) { out[i] = 1; stack[sp++] = i; } };
+      for (let x = 0; x < w; x++) { push(x); push((h - 1) * w + x); }
+      for (let y = 0; y < h; y++) { push(y * w); push(y * w + w - 1); }
+      while (sp) {
+        const i = stack[--sp], x = i % w, y = (i / w) | 0;
+        if (x > 0) push(i - 1); if (x < w - 1) push(i + 1); if (y > 0) push(i - w); if (y < h - 1) push(i + w);
+      }
+      let sil = new Uint8Array(w * h);
+      for (let i = 0; i < sil.length; i++) sil[i] = out[i] ? 0 : 1;
+      sil = morph(sil, w, h, 2, false);
+
+      // 3. Keep the biggest blob
+      const lab = new Int32Array(w * h);
+      let best = 0, bestId = 0, id = 0;
+      for (let s0 = 0; s0 < sil.length; s0++) {
+        if (!sil[s0] || lab[s0]) continue;
+        id++; let n = 0; sp = 0; stack[sp++] = s0; lab[s0] = id;
+        while (sp) {
+          const i = stack[--sp], x = i % w, y = (i / w) | 0; n++;
+          for (const j of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, y > 0 ? i - w : -1, y < h - 1 ? i + w : -1]) {
+            if (j >= 0 && sil[j] && !lab[j]) { lab[j] = id; stack[sp++] = j; }
+          }
+        }
+        if (n > best) { best = n; bestId = id; }
+      }
+      if (best < w * h * 0.015 || best > w * h * 0.9) return null;
+
+      // 4. Crop, turn it upright if it's lying down, and measure each row
+      let x0 = w, x1 = -1, y0 = h, y1 = -1;
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        if (lab[y * w + x] === bestId) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+      }
+      let bw = x1 - x0 + 1, bh = y1 - y0 + 1;
+      let get = (x, y) => lab[(y0 + y) * w + x0 + x] === bestId;
+      if (bw > bh * 1.2) { const g0 = get, oh = bh; get = (x, y) => g0(y, oh - 1 - x); [bw, bh] = [bh, bw]; }
+      let rows = [];
+      for (let y = 0; y < bh; y++) {
+        let mn = bw, mx = -1;
+        for (let x = 0; x < bw; x++) if (get(x, y)) { if (x < mn) mn = x; if (x > mx) mx = x; }
+        rows.push(mx >= 0 ? (mx - mn + 1) / 2 : 0);
+      }
+      const avg = (a, b) => rows.slice(a, b).reduce((t, v) => t + v, 0) / Math.max(1, b - a);
+      const k = Math.max(2, Math.round(bh * 0.15));
+      if (avg(0, k) > avg(bh - k, bh) * 1.15) rows.reverse();   // nose goes on top
+      for (let pass = 0; pass < 2; pass++) rows = rows.map((v, i) => (rows[Math.max(0, i - 1)] + v + rows[Math.min(bh - 1, i + 1)]) / 3);
+      return rows;
+    }
+
+    // Draw the rows centered on the sketchpad. The +2 px and 2 extra rows cancel the stroke
+    // allowance that analyzeSketchContours subtracts.
+    function drawSilhouetteRows(rows) {
+      const W = sketchCanvas.width, H = sketchCanvas.height;
+      let sc = (H - 24) / rows.length;
+      sc = Math.min(sc, (W / 2 - 12) / Math.max(...rows));
+      const n = Math.round(rows.length * sc);
+      sketchCtx.clearRect(0, 0, W, H);
+      sketchCtx.fillStyle = cssVar('--s600');
+      for (let j = -2; j < n + 2; j++) {
+        const src = rows[Math.min(rows.length - 1, Math.max(0, Math.floor(j / sc)))], half = src * sc + 2;
+        sketchCtx.fillRect(W / 2 - half, 12 + j, half * 2, 1);
+      }
+    }
+
+    function loadPhoto(file) {
+      if (!file) return;
+      const img = new Image();
+      img.onload = () => {
+        const sc = 260 / Math.max(img.width, img.height), w = Math.round(img.width * sc), h = Math.round(img.height * sc);
+        const c = document.createElement('canvas'); c.width = w; c.height = h;
+        const cx = c.getContext('2d'); cx.drawImage(img, 0, 0, w, h);
+        const px = cx.getImageData(0, 0, w, h).data, gray = new Float32Array(w * h);
+        for (let i = 0; i < gray.length; i++) gray[i] = 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2];
+        URL.revokeObjectURL(img.src);
+        const rows = extractSilhouetteRows(gray, w, h);
+        if (!rows) { sketchMsg("Couldn't find a rocket outline in that photo. Try dark pen on plain paper in good light."); return; }
+        drawSilhouetteRows(rows);
+        analyzeSketchContours();
+        sketchMsg('Photo converted. The 3D model now follows it.');
+      };
+      img.onerror = () => sketchMsg("Couldn't open that image.");
+      img.src = URL.createObjectURL(file);
+    }
+
+    // ---- Paint the hull with a picture ----
+    function paintHull(file) {
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      new THREE.TextureLoader().load(url, (tex) => { hullTex = tex; rebuild3DRocket(); });
+    }
+    function clearPaint() { hullTex = null; rebuild3DRocket(); }
+
+    // ---- Share links (the design lives in the URL) ----
+    function sampleAt(pts, y) {
+      let i = 0;
+      while (i < pts.length - 2 && pts[i + 1].y < y) i++;
+      const a = pts[i], b = pts[i + 1], f = b.y > a.y ? Math.min(1, Math.max(0, (y - a.y) / (b.y - a.y))) : 0;
+      return { full: a.full + (b.full - a.full) * f, hull: a.hull + (b.hull - a.hull) * f };
+    }
+
+    function encodeDesign() {
+      const c = {};
+      document.querySelectorAll('[id^="param-"]').forEach(e => { c[e.id.slice(6)] = e.value; });
+      const d = { v: 1, p: Object.keys(PLANETS).find(k => PLANETS[k] === PLANET), c };
+      const S = ROCKET_PARAM.sketch;
+      if (S) {
+        const N = 48, rows = [];
+        for (let i = 0; i < N; i++) { const q = sampleAt(S.pts, S.H * i / (N - 1)); rows.push(Math.round(q.full * 100), Math.round(q.hull * 100)); }
+        d.s = { H: Math.round(S.H * 100), n: Math.round(S.noseY * 100), r: rows };
+      }
+      return btoa(JSON.stringify(d)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
+    function decodeDesign(str) {
+      str = str.replace(/-/g, '+').replace(/_/g, '/');
+      while (str.length % 4) str += '=';
+      return JSON.parse(atob(str));
+    }
+
+    function applyDesign(d) {
+      setPlanet(d.p || 'earth');
+      for (const k in d.c) { const e = document.getElementById('param-' + k); if (e) e.value = d.c[k]; }
+      ROCKET_PARAM.sketch = null;
+      if (d.s) {
+        const N = d.s.r.length / 2, H = d.s.H / 100;
+        const pts = [];
+        for (let i = 0; i < N; i++) pts.push({ y: H * i / (N - 1), full: d.s.r[2 * i] / 100, hull: d.s.r[2 * i + 1] / 100 });
+        ROCKET_PARAM.sketch = { pts, noseY: d.s.n / 100, H, fins: buildFins(pts) };
+        sketchApplying = true;
+        updateDesignParameters();
+        const R = ROCKET_PARAM;
+        R.sketch.vals = { shape: R.noseShape, nose: R.noseHeight, body: R.bodyLength, diameter: R.bodyDiameter, finSpan: R.finSpan };
+        // show the outline on the sketchpad
+        const W = sketchCanvas.width, Hc = sketchCanvas.height, hpx = Hc - 24, k = hpx / H;
+        sketchCtx.clearRect(0, 0, W, Hc);
+        sketchCtx.fillStyle = cssVar('--s600');
+        for (let j = 0; j <= hpx; j++) {
+          const half = Math.min(W / 2 - 2, sampleAt(pts, H * (1 - j / hpx)).full * k);
+          sketchCtx.fillRect(W / 2 - half, 12 + j, half * 2, 1);
+        }
+        autoSpin = false;
+        reset3DCameraFrame();
+      } else {
+        updateDesignParameters();
+      }
+    }
+
+    function shareLink() {
+      const url = location.href.split('#')[0] + '#d=' + encodeDesign();
+      history.replaceState(null, '', url);
+      const ok = () => toast('Link copied');
+      if (navigator.clipboard) navigator.clipboard.writeText(url).then(ok).catch(() => prompt('Copy this link:', url));
+      else prompt('Copy this link:', url);
+    }
+
+    // ---- Sound and countdown ----
+    function AC() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      return audioCtx;
+    }
+    function beep(freq, dur = 0.12, vol = 0.15) {
+      if (!soundOn) return;
+      try {
+        const a = AC(), o = a.createOscillator(), g = a.createGain();
+        o.type = 'square'; o.frequency.value = freq;
+        g.gain.setValueAtTime(vol, a.currentTime); g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + dur);
+        o.connect(g); g.connect(a.destination); o.start(); o.stop(a.currentTime + dur);
+      } catch (e) { /* sound is optional */ }
+    }
+    function noiseBurst(dur, freq, vol) {
+      if (!soundOn) return;
+      try {
+        const a = AC(), buf = a.createBuffer(1, a.sampleRate * dur, a.sampleRate), d = buf.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+        const s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+        s.buffer = buf; f.type = 'lowpass'; f.frequency.value = freq; g.gain.value = vol;
+        s.connect(f); f.connect(g); g.connect(a.destination); s.start();
+      } catch (e) { /* sound is optional */ }
+    }
+    function say(text) {
+      if (!soundOn || !window.speechSynthesis) return;
+      speechSynthesis.cancel();
+      speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+    }
+    function startEngineSound() {
+      if (!soundOn) return;
+      try {
+        const a = AC(), buf = a.createBuffer(1, a.sampleRate * 2, a.sampleRate), d = buf.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+        const s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+        s.buffer = buf; s.loop = true; f.type = 'lowpass'; f.frequency.value = 300; g.gain.value = 0;
+        s.connect(f); f.connect(g); g.connect(a.destination); s.start();
+        engine = { s, f, g };
+      } catch (e) { /* sound is optional */ }
+    }
+    function updateEngineSound() {   // rumble follows thrust, and fades as the air thins
+      if (!engine) return;
+      const air = PLANET.rho0 ? Math.min(1, atmoDensity(simState.y) / PLANET.rho0 * 4 + 0.15) : 0.15;
+      engine.g.gain.setTargetAtTime(simState.burning ? 0.35 * air * (simSpeed > 10 ? 0.35 : 1) : 0, audioCtx.currentTime, 0.08);
+      engine.f.frequency.setTargetAtTime(200 + Math.min(600, simState.last[2] * 2), audioCtx.currentTime, 0.1);
+    }
+    function stopEngineSound() {
+      if (!engine) return;
+      const e = engine; engine = null;
+      e.g.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
+      setTimeout(() => { try { e.s.stop(); } catch (err) { /* already stopped */ } }, 600);
+    }
+    function toggleSound() {
+      soundOn = !soundOn;
+      document.getElementById('btn-sound').innerText = 'Sound: ' + (soundOn ? 'On' : 'Off');
+      if (!soundOn) { stopEngineSound(); if (window.speechSynthesis) speechSynthesis.cancel(); }
+    }
+
+    async function launchMission() {
+      if (counting || simActive) return;
+      const noLiftoff = ROCKET_PARAM.engineThrust * 1000 * ROCKET_PARAM.engineCluster <= ROCKET_PARAM.wetMass * PLANET.g;
+      if (soundOn && !noLiftoff) {   // T-minus countdown, only with sound on
+        counting = true;
+        const el = document.getElementById('countdown'), btn = document.getElementById('btn-launch');
+        btn.disabled = true; el.classList.remove('hidden');
+        for (const n of [3, 2, 1]) { el.innerText = n; beep(660, 0.15); say(String(n)); await sleep(900); }
+        el.innerText = 'LIFTOFF'; beep(990, 0.4); say('Liftoff');
+        setTimeout(() => el.classList.add('hidden'), 700);
+        btn.disabled = false; counting = false;
+      }
+      startFlight();
+    }
+
+    // ---- Save images and record the flight ----
+    function save3DPNG() {
+      renderer3D.render(scene3D, camera3D);
+      download(renderer3D.domElement.toDataURL('image/png'), 'aerocraft-3d.png');
+    }
+    function saveSimPNG() {
+      if (!simCanvas) { toast('Open the Launch Simulator first'); return; }
+      download(simCanvas.toDataURL('image/png'), 'aerocraft-flight.png');
+    }
+    function toggleRecording() {
+      const btn = document.getElementById('btn-rec');
+      if (recorder) { recorder.stop(); return; }
+      if (!simCanvas || !window.MediaRecorder) { alert('Recording needs a browser with MediaRecorder, such as Chrome, and the Launch Simulator open.'); return; }
+      const mime = ['video/webm;codecs=vp9', 'video/webm'].find(m => MediaRecorder.isTypeSupported(m));
+      recorder = new MediaRecorder(simCanvas.captureStream(30), mime ? { mimeType: mime, videoBitsPerSecond: 6000000 } : {});
+      recChunks = [];
+      recorder.ondataavailable = (e) => { if (e.data.size) recChunks.push(e.data); };
+      recorder.onstop = () => {
+        download(URL.createObjectURL(new Blob(recChunks, { type: 'video/webm' })), 'aerocraft-flight.webm');
+        recorder = null; btn.innerText = 'Record Flight';
+      };
+      recorder.start();
+      btn.innerText = 'Stop Recording';
+    }
+
+    // ---- Autopilot demo ----
+    const wait = async (ms) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (demoStop) throw new Error('stopped'); await sleep(40); } };
+    function caption(text) {
+      const c = document.getElementById('demo-caption');
+      c.innerText = text; c.classList.toggle('hidden', !text);
+    }
+
+    async function drawDemoOutline() {
+      const W = sketchCanvas.width, H = sketchCanvas.height, cx = W / 2;
+      const P = [[0, 10], [-6, 24], [-10, 44], [-11, 64], [-11, H - 70], [-34, H - 16], [-34, H - 10], [34, H - 10], [34, H - 16], [11, H - 70], [11, 64], [10, 44], [6, 24], [0, 10]];
+      sketchCtx.lineWidth = 4; sketchCtx.lineCap = 'round'; sketchCtx.strokeStyle = cssVar('--s600');
+      sketchCtx.beginPath(); sketchCtx.moveTo(cx + P[0][0], P[0][1]);
+      for (let i = 1; i < P.length; i++) {
+        for (let k = 1; k <= 8; k++) {
+          sketchCtx.lineTo(cx + P[i - 1][0] + (P[i][0] - P[i - 1][0]) * k / 8, P[i - 1][1] + (P[i][1] - P[i - 1][1]) * k / 8);
+          sketchCtx.stroke(); await wait(14);
+        }
+      }
+    }
+
+    const tune = async (target) => {
+      document.getElementById('param-target').value = target;
+      updateDesignParameters();
+      const b = document.getElementById('btn-autotune');
+      b.innerText = 'Tuning...'; await wait(80);
+      runAutoTune();
+      b.innerText = 'Auto-Tune Engine & Chute';
+    };
+
+    const fly = async (fastAfterMs) => {
+      switchMainTab('sim'); setSimSpeed(2.5); await wait(900);
+      launchMission();
+      while (!simActive) await wait(100);
+      if (fastAfterMs) { await wait(fastAfterMs); setSimSpeed(50); } else setSimSpeed(50);
+      while (simActive) await wait(100);
+      await wait(3500);
+      closeRecapModal(false);
+    };
+
+    async function runDemo() {
+      if (demoRunning) { demoStop = true; return; }
+      demoRunning = true; demoStop = false;
+      const btn = document.getElementById('btn-demo');
+      btn.innerText = 'Stop Demo';
+      try {
+        document.getElementById('modal-recap').classList.add('hidden');
+        switchMainTab('studio'); setPlanet('earth'); switchPartSubTab('nose'); autoSpin = false;
+        caption('Draw any side outline of a rocket'); await wait(1500);
+        clearSketchCanvas(); await drawDemoOutline(); analyzeSketchContours();
+        caption('The 3D model is built from the exact outline, fins included'); await wait(3000);
+        switchPartSubTab('payload');
+        caption('Auto-Tune searches for an engine and parachute that reach 100 km'); await wait(1500);
+        await tune(100000); await wait(2500);
+        caption('Launch on Earth. The fast-forward gives the same result at any speed.');
+        await fly(5000);
+
+        switchMainTab('studio'); setPlanet('mars');
+        caption('Now Mars: lower gravity, very thin air, a different sky'); await wait(3000);
+        caption('Auto-Tune again, this time for 30 km, with a landing burn for the thin air');
+        await tune(30000); await wait(2000);
+        await fly(0);
+        caption('Try your own rocket!'); await wait(2500);
+      } catch (e) {
+        if (e.message !== 'stopped') throw e;
+      } finally {
+        if (simActive) abortMission();
+        caption(''); demoRunning = false; demoStop = false;
+        btn.innerText = 'Autopilot Demo';
+      }
     }
 
     // ---- Report, tabs and startup ----
     function triggerRecapModal() {
+      stopEngineSound();
       const $ = (id) => document.getElementById(id);
       const badge = $('recap-badge'), analysis = $('recap-analysis');
       const impact = Math.abs(Math.round(simState.v));
@@ -1220,6 +1892,7 @@
 
     function closeRecapModal(switchToStudio) {
       document.getElementById('modal-recap').classList.add('hidden');
+      if (recorder) recorder.stop();
       abortMission();
       if (switchToStudio) switchMainTab('studio');
     }
@@ -1249,10 +1922,13 @@
       rng('param-body-diameter', 0.2, 8, 0.01);
       rng('param-fin-span', 0.05, 6, 0.01);
       rng('param-engine-propellant', 20, 15000, 10);   // low enough for a 3 km flight
-      updateDesignParameters();
+      setPlanet('earth');
       init3DViewport();
       initSketchCanvas();
       reset3DCameraFrame();
+      if (location.hash.startsWith('#d=')) {   // open a shared design
+        try { applyDesign(decodeDesign(location.hash.slice(3))); } catch (e) { toast("Couldn't read that link"); }
+      }
       document.querySelectorAll('[data-speed]').forEach(b => { b.onclick = () => setSimSpeed(+b.dataset.speed); });
       window.addEventListener('resize', () => {
         const c = document.getElementById('viewport-3d-container');
