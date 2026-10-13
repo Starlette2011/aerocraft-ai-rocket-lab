@@ -1,17 +1,19 @@
 """
-AeroCraft AI - sketch analysis prototype
+AeroCraft AI - sketch and photo analysis prototype
 
-Takes a rocket side-profile sketch (a NumPy image) and works out the same
-things the browser app reads from its canvas: the outline, where the nose ends,
-the body width, and any fins sticking out past the body. It then turns those
-into the slider values the app uses (nose height, body length, diameter, fin span).
+Takes a rocket side-profile (a drawn sketch, or a photo of a hand-drawn rocket on
+paper) and works out the same things the browser app reads: the outline, where the
+nose ends, the body width, and any fins sticking out past the body. It then turns
+those into the slider values the app uses (nose height, body length, diameter,
+fin span).
 
-This script is standalone. aerocraft.html does its own sketch reading in JavaScript
-and doesn't call this file.
+This script is standalone. index.html does its own sketch and photo reading in
+JavaScript and doesn't call this file.
 
 Usage:
-    python backend.py              # runs a built-in test sketch
-    python backend.py sketch.png   # analyzes your own image
+    python backend.py                    # runs a built-in test sketch
+    python backend.py sketch.png         # analyzes a drawn sketch (white lines on black, or a scan)
+    python backend.py photo.jpg --photo  # analyzes a photo of a drawing on paper
 """
 
 import sys
@@ -19,6 +21,10 @@ import sys
 import cv2
 import numpy as np
 
+
+# ---------------------------------------------------------------------------
+# Sketch path: a clean line drawing or canvas export
+# ---------------------------------------------------------------------------
 
 def extract_outline(sketch):
     """
@@ -31,7 +37,7 @@ def extract_outline(sketch):
     if sketch.ndim == 3:
         sketch = cv2.cvtColor(sketch, cv2.COLOR_BGR2GRAY)
 
-    # Dark-on-light drawings (like a photo of paper) get flipped so the lines are bright
+    # Dark-on-light drawings (like a scan of paper) get flipped so the lines are bright
     if sketch.mean() > 127:
         sketch = 255 - sketch
 
@@ -68,25 +74,88 @@ def width_profile(mask):
     return np.array(half), top
 
 
-def extract_rocket_features(sketch):
-    """
-    Split a sketch into nose, body and fins.
+# ---------------------------------------------------------------------------
+# Photo path: a picture of a drawing on paper
+# ---------------------------------------------------------------------------
 
-    Same approach as the browser version:
+def photo_to_profile(image, work_size=260):
+    """
+    Turn a photo of a hand-drawn rocket into a list of half-widths, nose first.
+    Same steps as the browser version:
+
+      1. Ink = clearly darker than the local average, so uneven lighting is fine.
+      2. Close small gaps in the pen line. Whatever the outside can't reach is the rocket.
+      3. Keep the biggest blob.
+      4. Crop it, stand it upright if it's lying down, put the nose on top,
+         measure each row and smooth the result.
+
+    Returns a NumPy array of half-widths in pixels, or None if no rocket was found.
+    """
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if image.ndim == 3 else image.copy()
+    sc = work_size / max(gray.shape)
+    gray = cv2.resize(gray, (max(1, round(gray.shape[1] * sc)), max(1, round(gray.shape[0] * sc))),
+                      interpolation=cv2.INTER_AREA)
+    h, w = gray.shape
+
+    if gray.mean() < 90:                      # light drawing on dark paper
+        gray = 255 - gray
+
+    # 1. Ink mask (local mean minus 14, same threshold as the browser)
+    r = max(6, round(min(w, h) / 16))
+    ink = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
+                                cv2.THRESH_BINARY_INV, 2 * r + 1, 14) > 0
+
+    # 2. Close pen gaps, then fill everything the outside can't reach
+    ink = cv2.dilate(ink.astype(np.uint8), np.ones((5, 5), np.uint8)) > 0
+    free = (~ink).astype(np.uint8)
+    n, labels = cv2.connectedComponents(free, connectivity=4)
+    border = np.unique(np.concatenate([labels[0], labels[-1], labels[:, 0], labels[:, -1]]))
+    outside = np.isin(labels, border[border > 0]) & (free > 0)
+    sil = (~outside).astype(np.uint8)
+    sil = cv2.erode(sil, np.ones((5, 5), np.uint8))
+
+    # 3. Biggest blob only
+    n, labels, stats, _ = cv2.connectedComponentsWithStats(sil, connectivity=4)
+    if n < 2:
+        return None
+    best = 1 + int(np.argmax(stats[1:, cv2.CC_STAT_AREA]))
+    area = stats[best, cv2.CC_STAT_AREA]
+    if area < w * h * 0.015 or area > w * h * 0.9:
+        return None
+
+    # 4. Crop, upright, nose on top, measure
+    x, y, bw, bh = (stats[best, k] for k in (cv2.CC_STAT_LEFT, cv2.CC_STAT_TOP,
+                                             cv2.CC_STAT_WIDTH, cv2.CC_STAT_HEIGHT))
+    blob = labels[y:y + bh, x:x + bw] == best
+    if bw > bh * 1.2:                         # lying down: turn it upright
+        blob = np.rot90(blob)
+        bh = blob.shape[0]
+
+    rows = np.array([(np.where(row)[0][-1] - np.where(row)[0][0] + 1) / 2 if row.any() else 0.0
+                     for row in blob])
+    k = max(2, round(bh * 0.15))
+    if rows[:k].mean() > rows[-k:].mean() * 1.15:   # wide end should be at the bottom
+        rows = rows[::-1]
+    for _ in range(2):                        # light smoothing
+        padded = np.concatenate([[rows[0]], rows, [rows[-1]]])
+        rows = (padded[:-2] + padded[1:-1] + padded[2:]) / 3
+    return rows
+
+
+# ---------------------------------------------------------------------------
+# Features and rocket parameters
+# ---------------------------------------------------------------------------
+
+def features_from_profile(half, top=0):
+    """
+    Split a width profile into nose, body and fins.
+
       - body half-width = median width through the middle 40% of the drawing
       - nose ends at the first row that reaches 90% of the body width
       - how curved the nose is picks conical, parabolic or ogive
       - rows wider than the body (by more than 4%) are fins
     All measurements are in pixels.
     """
-    mask = extract_outline(sketch)
-    if mask is None:
-        return {"status": "No valid geometry detected"}
-
-    half, top = width_profile(mask)
-    if half is None:
-        return {"status": "No valid geometry detected"}
-
     n = len(half)
     middle = np.sort(half[int(n * 0.3):int(np.ceil(n * 0.7))])
     body_half = max(1.0, float(middle[len(middle) // 2]))
@@ -130,6 +199,20 @@ def extract_rocket_features(sketch):
     }
 
 
+def extract_rocket_features(image, photo=False):
+    """Analyze a sketch (default) or a photo of a drawing (photo=True)."""
+    none = {"status": "No valid geometry detected"}
+    if photo:
+        half = photo_to_profile(image)
+        return none if half is None or len(half) < 12 else features_from_profile(half)
+
+    mask = extract_outline(image)
+    if mask is None:
+        return none
+    half, top = width_profile(mask)
+    return none if half is None else features_from_profile(half, top)
+
+
 def to_rocket_params(features, length_m=9.8):
     """
     Convert pixel measurements to the values the app's sliders use.
@@ -169,17 +252,21 @@ def _test_sketch():
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        image = cv2.imread(sys.argv[1], cv2.IMREAD_UNCHANGED)
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    photo = "--photo" in sys.argv
+
+    if args:
+        image = cv2.imread(args[0], cv2.IMREAD_UNCHANGED)
         if image is None:
-            sys.exit(f"Couldn't read image: {sys.argv[1]}")
-        if image.ndim == 3 and image.shape[2] == 4:      # PNG with transparency
-            alpha = image[:, :, 3]
-            image = np.where(alpha > 0, 255, 0).astype(np.uint8)
+            sys.exit(f"Couldn't read image: {args[0]}")
+        if image.ndim == 3 and image.shape[2] == 4:      # PNG with transparency: use it as a mask
+            image = np.where(image[:, :, 3] > 0, 255, 0).astype(np.uint8)
     else:
         image = _test_sketch()
 
-    features = extract_rocket_features(image)
+    features = extract_rocket_features(image, photo=photo)
     features.pop("profile", None)                         # long list, skip when printing
     print("Features (pixels):", features)
-    print("Rocket parameters:", to_rocket_params(extract_rocket_features(image)))
+    print("Rocket parameters:", to_rocket_params(features))
+    if photo and "status" in features:
+        print("Tip: use dark pen on plain paper in good light, with the whole rocket in frame.")
